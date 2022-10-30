@@ -78,7 +78,7 @@ export function getCloudifyKeywords() {
 	appendCompletionItems(masterWordCompletionList, cloudifyKeywords);
 	appendCompletionItems(masterWordCompletionList, toscaDefinitionsVersionKeywords);
 	appendCompletionItems(masterWordCompletionList, inputKeywords);
-    appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
+	appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
 	return masterWordCompletionList;
 }
 
