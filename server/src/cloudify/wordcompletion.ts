@@ -29,6 +29,32 @@ const cloudifyKeywords = [
 const toscaDefinitionsVersionKeywords = [
 	'cloudify_dsl_1_3',
 	'cloudify_dsl_1_4',
+	'cloudify_dsl_1_5',
+]
+
+// TODO: Add find yaml files in subfolders and add them to import options.
+// TODO: Add version constraints prediction.
+const importKeywords = [
+	'cloudify/types/types.yaml',
+	'https://cloudify.co/spec/cloudify/6.3.0/types.yaml',
+	'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
+	'plugin:',
+	'cloudify-ansible-plugin',
+	'cloudify-aws-plugin',
+	'cloudify-azure-plugin',
+	'cloudify-docker-plugin',
+	'cloudify-fabric-plugin',
+	'cloudify-gcp-plugin',
+	'cloudify-helm-plugin',
+	'cloudify-kubernetes-plugin',
+	'cloudify-openstack-plugin',
+	'cloudify-serverless-plugin',
+	'cloudify-spot-ocean-plugin',
+	'cloudify-starlingx-plugin',
+	'cloudify-terraform-plugin',
+	'cloudify-terragrunt-plugin',
+	'cloudify-utilities-plugin',
+	'cloudify-vsphere-plugin',
 ]
 
 const inputKeywords = [
@@ -77,6 +103,7 @@ export function getCloudifyKeywords() {
 	const masterWordCompletionList:CompletionItem[] = new Array();
 	appendCompletionItems(masterWordCompletionList, cloudifyKeywords);
 	appendCompletionItems(masterWordCompletionList, toscaDefinitionsVersionKeywords);
+	appendCompletionItems(masterWordCompletionList, importKeywords);
 	appendCompletionItems(masterWordCompletionList, inputKeywords);
 	appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
 	return masterWordCompletionList;
