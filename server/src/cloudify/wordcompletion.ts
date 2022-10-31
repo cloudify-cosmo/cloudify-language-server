@@ -38,7 +38,10 @@ const importKeywords = [
 	'cloudify/types/types.yaml',
 	'https://cloudify.co/spec/cloudify/6.3.0/types.yaml',
 	'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
-	'plugin:',
+	'plugin:'
+]
+
+const pluginNames = [
 	'cloudify-ansible-plugin',
 	'cloudify-aws-plugin',
 	'cloudify-azure-plugin',
@@ -54,7 +57,7 @@ const importKeywords = [
 	'cloudify-terraform-plugin',
 	'cloudify-terragrunt-plugin',
 	'cloudify-utilities-plugin',
-	'cloudify-vsphere-plugin',
+	'cloudify-vsphere-plugin'
 ]
 
 const inputKeywords = [
@@ -104,6 +107,7 @@ export function getCloudifyKeywords() {
 	appendCompletionItems(masterWordCompletionList, cloudifyKeywords);
 	appendCompletionItems(masterWordCompletionList, toscaDefinitionsVersionKeywords);
 	appendCompletionItems(masterWordCompletionList, importKeywords);
+	appendCompletionItems(masterWordCompletionList, pluginNames);
 	appendCompletionItems(masterWordCompletionList, inputKeywords);
 	appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
 	return masterWordCompletionList;
@@ -120,17 +124,36 @@ function appendCompletionItems(mainList:CompletionItem[], newList:string[]) {
 
 class cloudifyWords {
 	keywords: CompletionItem[];
+	initialized: boolean;
+	importedPlugins;
 
 	constructor() {
 		this.keywords = getCloudifyKeywords();
+		this.initialized = false;
+		this.importedPlugins = new Array();
 	}
 
 	public async init () {
-		let nodeTypes = await getNodeTypesForPluginVersion('cloudify-aws-plugin');
-		for (let nodeType of nodeTypes) {
-			this.appendKeyword(nodeType.type);
+		if (this.initialized) {
+			return '';
+		} else {
+			let nodeTypes = await getNodeTypesForPluginVersion('cloudify-aws-plugin');
+			for (let nodeType of nodeTypes) {
+				this.appendKeyword(nodeType.type);
+			}
+			this.initialized = true;
+			return '';
 		}
-		return '';
+	}
+
+    public async importPlugin(pluginName:string) {
+		if (this.importedPlugins.includes(pluginName)) {
+			let nodeTypes = await getNodeTypesForPluginVersion('pluginName');
+			for (let nodeType of nodeTypes) {
+				this.appendKeyword(nodeType.type);
+			}
+		}
+
 	}
 
 	appendKeyword = (keyword:string)=>{

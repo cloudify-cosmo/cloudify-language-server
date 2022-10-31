@@ -84,9 +84,6 @@ connection.onInitialized(() => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
-	connection.console.log(
-		'' + cloudify.init().then(result => {return result})
-	);
 });
 
 // The example settings
@@ -219,6 +216,7 @@ connection.onCompletionResolve(
 			item.detail = 'JavaScript details';
 			item.documentation = 'JavaScript documentation';
 		}
+		connection.console.log('Detail: ' + item.detail);
 		return item;
 	}
 );
