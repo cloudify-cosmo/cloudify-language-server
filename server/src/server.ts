@@ -40,7 +40,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 connection.onInitialize((params: InitializeParams) => {
 	const capabilities = params.capabilities;
 
-
 	// Does the client support the `workspace/configuration` request?
 	// If not, we fall back using global settings.
 	hasConfigurationCapability = !!(
@@ -84,6 +83,7 @@ connection.onInitialized(() => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
+	cloudify.init();
 });
 
 // The example settings
@@ -94,7 +94,7 @@ interface ExampleSettings {
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
+const defaultSettings: ExampleSettings = { maxNumberOfProblems: 100 };
 let globalSettings: ExampleSettings = defaultSettings;
 
 // Cache the settings of all open documents
@@ -142,6 +142,7 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	// In this simple example we get the settings for every validate run.
+	cloudify.addRelativeImports(textDocument.uri);
 	const settings = await getDocumentSettings(textDocument.uri);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
@@ -192,8 +193,6 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received an file change event');
 });
 
-const masterWordCompletionList = cloudify.keywords;
-
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
@@ -201,7 +200,7 @@ connection.onCompletion(
 		// which code complete got requested. For the example we ignore this
 		// info and always provide the same completion items.
 
-		return masterWordCompletionList;
+		return cloudify.keywords;
 	}
 );
 
@@ -209,14 +208,15 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
 	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			item.detail = 'TypeScript details';
-			item.documentation = 'TypeScript documentation';
-		} else if (item.data === 2) {
-			item.detail = 'JavaScript details';
-			item.documentation = 'JavaScript documentation';
-		}
-		connection.console.log('Detail: ' + item.detail);
+		// if (item.data === 0) {
+		// 	item.detail = 'TypeScript details';
+		// 	item.documentation = 'https://cloudify.co';
+		// } else if (item.data === 1) {
+		// 	item.detail = 'JavaScript details';
+		// 	item.documentation = 'https://cloudify.co';
+		// }
+		// connection.console.log('Detail: ' + 'https://cloudify.co');
+		// return item;
 		return item;
 	}
 );
