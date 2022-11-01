@@ -10,7 +10,7 @@
 
 export const name:string = 'node_types';
 
-class validator {
+export class validator {
 	name:string;
 	derivedFrom:string;
 	properties:nodeTypeProperties;

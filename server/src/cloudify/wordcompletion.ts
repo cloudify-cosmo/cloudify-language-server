@@ -10,7 +10,10 @@ import {
 	getNodeTypesForPluginVersion,
 } from './marketplace';
 import {
-    name as toscaDefinitionsVersionKeyword,
+    getParsed,
+} from './parsing';
+import {
+    name as toscaDefinitionsVersionName,
 	keywords as toscaDefinitionsVersionKeywords,
 	validator as cloudifyToscaDefinitionsVersionValidator,
 } from './sections/toscaDefinitionsVersion';
@@ -18,13 +21,14 @@ import {
     name as importsKeyword,
 	keywords as importKeywords,
 	getImportableYamls,
+	validator as importsValidator,
 } from './sections/imports';
 import {
 	name as nodeTypeKeyword,
 } from './sections/nodeTypes';
 
 const cloudifyKeywords = [
-	toscaDefinitionsVersionKeyword,
+	toscaDefinitionsVersionName,
 	'description',
 	importsKeyword,
 	'inputs',
@@ -59,7 +63,10 @@ const pluginNames = [
 ]
 
 const inputKeywords = [
-	'type', 'description', 'required', 'default'
+	'type',
+	'description',
+	'required',
+	'default'
 ]
 
 const nodeTypeKeywords = [
@@ -120,15 +127,59 @@ function appendCompletionItems(mainList:CompletionItem[], newList:string[]) {
 	return mainList;
 }
 
+class blueprintContext {
+	uri:string;
+	parsed;
+	dslVersion:string;
+	imports;
+	constructor(uri:string) {
+		this.uri = uri;
+		this.parsed = getParsed(this.uri);
+		this.dslVersion = this.getDslVersion();
+		this.imports = this.getImports();
+	}
+	getSection = (sectionName:string)=>{
+		try {
+			return this.parsed[sectionName];
+
+		} catch {
+			return Object();
+		}
+	}
+	getDslVersion=()=>{
+		let rawVersion = this.getSection(toscaDefinitionsVersionName);
+		console.log('Raw version '.concat(rawVersion));
+		let _version = new cloudifyToscaDefinitionsVersionValidator(rawVersion);
+		return _version.toString();
+	}
+	getImports=()=>{
+		let rawImports = this.getSection('imports') as [];
+		console.log('Raw imports ' + rawImports);
+		let _imports = new importsValidator(this.dslVersion, rawImports);
+		return _imports;
+	}
+}
+
 class cloudifyWords {
 	keywords: CompletionItem[];
 	initialized: boolean;
 	importedPlugins;
+	dslVersion:string;
 
 	constructor() {
 		this.keywords = getCloudifyKeywords();
 		this.initialized = false;
 		this.importedPlugins = new Array();
+		this.dslVersion = '';
+	}
+
+    public async update(uri:string) {
+		const ctx = new blueprintContext(uri);
+		this.addRelativeImports(uri);	
+		this.dslVersion = ctx.dslVersion;
+		for (let plugin of ctx.imports.plugins) {
+			await this.importPlugin(plugin);
+		}
 	}
 
 	public async init () {
@@ -152,10 +203,18 @@ class cloudifyWords {
 	}
 
     public async importPlugin(pluginName:string) {
-		if (this.importedPlugins.includes(pluginName)) {
-			let nodeTypes = await getNodeTypesForPluginVersion('pluginName');
-			for (let nodeType of nodeTypes) {
-				this.appendKeyword(nodeType.type);
+		if (!(typeof pluginName === 'string')) {
+			return '';
+		}
+		let pluginSubString = pluginName.match('^cloudify\-[a-z]*\-plugin$') as string[];
+		if (pluginSubString.length == 1) {
+			let pluginName:string = pluginSubString[0];
+			if (!this.importedPlugins.includes(pluginName)) {
+				let nodeTypes = await getNodeTypesForPluginVersion(pluginName);
+				for (let nodeType of nodeTypes) {
+					this.appendKeyword(nodeType.type);
+				}
+			    this.importedPlugins.push(pluginName);
 			}
 		}
 	}

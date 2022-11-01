@@ -16,7 +16,6 @@ import {
 	TextDocumentSyncKind,
 	InitializeResult
 } from 'vscode-languageserver/node';
-
 import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
@@ -142,7 +141,7 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	// In this simple example we get the settings for every validate run.
-	cloudify.addRelativeImports(textDocument.uri);
+	await cloudify.update(textDocument.uri);
 	const settings = await getDocumentSettings(textDocument.uri);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more

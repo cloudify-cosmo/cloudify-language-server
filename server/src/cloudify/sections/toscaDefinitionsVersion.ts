@@ -12,12 +12,10 @@ export const keywords = [
 
 export class validator {
 	version:string;
-	constructor (version: string) {
+	constructor (version:string) {
 		this.version = version;
-		if (keywords.includes(this.version)) {
-			// great;
-		} else {
-			throw new Error('Invalid ' + name + ': ' + this.version);
-		}
+	}
+	toString() {
+		return this.version;
 	}
 }

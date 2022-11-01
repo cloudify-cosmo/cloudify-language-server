@@ -19,15 +19,59 @@ export const keywords = [
 // TODO: Add find yaml files in subfolders and add them to import options.
 // TODO: Add version constraints prediction.
 
-export class validator {
-	dslVersion:string;
+class itemValidator {
 	importItem:any;
+	isString:boolean;
 	constructor (dslVersion:string, importItem:any) {
-		this.dslVersion = dslVersion;
-		if (dslVersionAsString.includes(this.dslVersion)) {
+		if (dslVersionAsString.includes(dslVersion)) {
+			this.isString = true;
+			this.importItem = importItem as string;
+		} else if (typeof importItem === 'string') {
+			this.isString = true;
 			this.importItem = importItem as string;
 		} else {
+			this.isString = false;
 			this.importItem = importItem as Object;
+		}
+	}
+	toString() {
+		if (this.isString) {
+			return this.importItem;
+		} else {
+			console.error('Unable to return item as string.');
+			return ''
+		}
+	}
+}
+
+export class validator {
+    dslVersion:string;
+	rawImports:[];
+	imports;
+	plugins:string[];
+
+	constructor(dslVersion:string, rawImports:[]) {
+		this.dslVersion = dslVersion;
+		this.rawImports = rawImports;
+		this.imports = new Array();
+		this.plugins = new Array();
+		this.assignPlugins();
+	}
+
+	assignPlugins() {
+		try {
+			for (let rawImported of this.rawImports) {
+				let imported = new itemValidator(this.dslVersion, rawImported);
+				this.imports.push(imported);
+				let stringImport = imported.toString();
+				if (stringImport.startsWith('plugin:')) {
+					this.plugins.push(stringImport.replace('plugin:', ''));
+				}
+				console.log('plugins ' + this.plugins);
+			}
+		} catch (e) {
+			// Worse things could happen.
+			console.log(e);
 		}
 	}
 }
