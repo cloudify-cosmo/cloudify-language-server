@@ -9,36 +9,34 @@ import {
 import {
 	getNodeTypesForPluginVersion,
 } from './marketplace';
+import {
+    name as toscaDefinitionsVersionKeyword,
+	keywords as toscaDefinitionsVersionKeywords,
+	validator as cloudifyToscaDefinitionsVersionValidator,
+} from './sections/toscaDefinitionsVersion';
+import {
+    name as importsKeyword,
+	keywords as importKeywords,
+	getImportableYamls,
+} from './sections/imports';
+import {
+	name as nodeTypeKeyword,
+} from './sections/nodeTypes';
 
 const cloudifyKeywords = [
-	'tosca_definitions_version',
+	toscaDefinitionsVersionKeyword,
 	'description',
-	'imports',
+	importsKeyword,
 	'inputs',
 	'dsl_definitions',
 	'labels',
 	'blueprint_labels',
-	'node_types',
+	nodeTypeKeyword,
 	'relationships',
 	'workflows',
 	'node_templates',
 	'outputs',
 	'capabilities',
-]
-
-const toscaDefinitionsVersionKeywords = [
-	'cloudify_dsl_1_3',
-	'cloudify_dsl_1_4',
-	'cloudify_dsl_1_5',
-]
-
-// TODO: Add find yaml files in subfolders and add them to import options.
-// TODO: Add version constraints prediction.
-const importKeywords = [
-	'cloudify/types/types.yaml',
-	'https://cloudify.co/spec/cloudify/6.3.0/types.yaml',
-	'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
-	'plugin:'
 ]
 
 const pluginNames = [
@@ -137,12 +135,19 @@ class cloudifyWords {
 		if (this.initialized) {
 			return '';
 		} else {
-			let nodeTypes = await getNodeTypesForPluginVersion('cloudify-aws-plugin');
-			for (let nodeType of nodeTypes) {
-				this.appendKeyword(nodeType.type);
-			}
 			this.initialized = true;
 			return '';
+		}
+	}
+
+	// TODO: Create a new function that will import base types.
+	// public async importTypes() {
+    //
+	// }
+
+	public addRelativeImports(documentUri:string) {
+		for (let value of getImportableYamls(documentUri)) {
+			this.appendKeyword(value);
 		}
 	}
 
@@ -153,16 +158,17 @@ class cloudifyWords {
 				this.appendKeyword(nodeType.type);
 			}
 		}
-
 	}
 
 	appendKeyword = (keyword:string)=>{
-        let currentIndex = this.keywords.length;
-		this.keywords.push(
-			getCompletionItem(keyword, currentIndex)
-		)
+		const keywordNames = this.keywords.map((obj) => obj.label);
+		if (!keywordNames.includes(keyword)) {
+			let currentIndex = this.keywords.length;
+			this.keywords.push(
+				getCompletionItem(keyword, currentIndex)
+			)	
+		}
 	}
-
 }
 
 export const cloudify = new cloudifyWords();
