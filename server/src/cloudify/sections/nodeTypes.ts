@@ -9,6 +9,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 export const name = 'node_types';
+
 export class Validator {
     name:string;
     derivedFrom:string;
@@ -29,3 +30,33 @@ class NodeTypeProperties {
 class NodeTypeInterfaces {
     [key: string]: object;
 }
+
+export const list = [
+    'cloudify.nodes.Port',
+    'cloudify.nodes.Root',
+    'cloudify.nodes.Tier',
+    'cloudify.nodes.Router',
+    'cloudify.nodes.Subnet',
+    'cloudify.nodes.Volume',
+    'cloudify.nodes.Network',
+    'cloudify.nodes.Compute',
+    'cloudify.nodes.Container',
+    'cloudify.nodes.VirtualIP',
+    'cloudify.nodes.FileSystem',
+    'cloudify.nodes.ObjectStorage',
+    'cloudify.nodes.LoadBalancer',
+    'cloudify.nodes.SecurityGroup',
+    'cloudify.nodes.SoftwareComponent',
+    'cloudify.nodes.DBMS',
+    'cloudify.nodes.Database',
+    'cloudify.nodes.WebServer',
+    'cloudify.nodes.ApplicationServer',
+    'cloudify.nodes.MessageBusServer',
+    'cloudify.nodes.ApplicationModule',
+    'cloudify.nodes.CloudifyManager',
+    'cloudify.nodes.Component',
+    'cloudify.nodes.ServiceComponent',
+    'cloudify.nodes.SharedResource',
+    'cloudify.nodes.Blueprint',
+    'cloudify.nodes.PasswordSecret'
+];

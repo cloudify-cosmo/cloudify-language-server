@@ -4,28 +4,46 @@
  * ------------------------------------------------------------------------------------------ */
 import {
     CompletionItem,
-    CompletionItemKind,
 } from 'vscode-languageserver/node';
+
+import {
+    getCompletionItem,
+    appendCompletionItems,
+} from './utils';
+
 import {
     getNodeTypesForPluginVersion,
 } from './marketplace';
+
 import {
     getParsed,
 } from './parsing';
+
 import {
     name as toscaDefinitionsVersionName,
     keywords as toscaDefinitionsVersionKeywords,
     Validator as CloudifyToscaDefinitionsVersionValidator,
 } from './sections/toscaDefinitionsVersion';
+
 import {
     name as importsKeyword,
     keywords as importKeywords,
     getImportableYamls,
     Validator as ImportsValidator,
 } from './sections/imports';
+
 import {
     name as nodeTypeKeyword,
+    list as nodeTypeKeywords,
 } from './sections/nodeTypes';
+
+import {
+    list as pluginNames,
+} from './sections/plugins';
+
+import {
+    keywords as inputKeywords,
+} from './sections/inputs';
 
 const cloudifyKeywords = [
     toscaDefinitionsVersionName,
@@ -43,95 +61,12 @@ const cloudifyKeywords = [
     'capabilities',
 ];
 
-const pluginNames = [
-    'cloudify-ansible-plugin',
-    'cloudify-aws-plugin',
-    'cloudify-azure-plugin',
-    'cloudify-docker-plugin',
-    'cloudify-fabric-plugin',
-    'cloudify-gcp-plugin',
-    'cloudify-helm-plugin',
-    'cloudify-kubernetes-plugin',
-    'cloudify-openstack-plugin',
-    'cloudify-serverless-plugin',
-    'cloudify-spot-ocean-plugin',
-    'cloudify-starlingx-plugin',
-    'cloudify-terraform-plugin',
-    'cloudify-terragrunt-plugin',
-    'cloudify-utilities-plugin',
-    'cloudify-vsphere-plugin'
-];
-
-const inputKeywords = [
-    'type',
-    'description',
-    'required',
-    'default'
-];
-
-const nodeTypeKeywords = [
-    'cloudify.nodes.Port',
-    'cloudify.nodes.Root',
-    'cloudify.nodes.Tier',
-    'cloudify.nodes.Router',
-    'cloudify.nodes.Subnet',
-    'cloudify.nodes.Volume',
-    'cloudify.nodes.Network',
-    'cloudify.nodes.Compute',
-    'cloudify.nodes.Container',
-    'cloudify.nodes.VirtualIP',
-    'cloudify.nodes.FileSystem',
-    'cloudify.nodes.ObjectStorage',
-    'cloudify.nodes.LoadBalancer',
-    'cloudify.nodes.SecurityGroup',
-    'cloudify.nodes.SoftwareComponent',
-    'cloudify.nodes.DBMS',
-    'cloudify.nodes.Database',
-    'cloudify.nodes.WebServer',
-    'cloudify.nodes.ApplicationServer',
-    'cloudify.nodes.MessageBusServer',
-    'cloudify.nodes.ApplicationModule',
-    'cloudify.nodes.CloudifyManager',
-    'cloudify.nodes.Component',
-    'cloudify.nodes.ServiceComponent',
-    'cloudify.nodes.SharedResource',
-    'cloudify.nodes.Blueprint',
-    'cloudify.nodes.PasswordSecret'
-];
-
-function getCompletionItem(newLabel:string, newData:any): CompletionItem {
-    return {
-        label: newLabel,
-        kind: CompletionItemKind.Text,
-        data: newData,
-    };
-}
-
-export function getCloudifyKeywords() {
-    const masterWordCompletionList:CompletionItem[] = [];
-    appendCompletionItems(masterWordCompletionList, cloudifyKeywords);
-    appendCompletionItems(masterWordCompletionList, toscaDefinitionsVersionKeywords);
-    appendCompletionItems(masterWordCompletionList, importKeywords);
-    appendCompletionItems(masterWordCompletionList, pluginNames);
-    appendCompletionItems(masterWordCompletionList, inputKeywords);
-    appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
-    return masterWordCompletionList;
-}
-
-function appendCompletionItems(mainList:CompletionItem[], newList:string[]) {
-    let currentIndex:number = mainList.length;
-    for (const keyword of newList) {
-        mainList.push(getCompletionItem(keyword, currentIndex));
-        currentIndex++;
-    }
-    return mainList;
-}
-
 class BlueprintContext {
     uri:string;
     parsed;
     dslVersion:string;
     imports;
+
     constructor(uri:string) {
         this.uri = uri;
         this.parsed = getParsed(this.uri);
@@ -139,21 +74,27 @@ class BlueprintContext {
         this.imports = this.getImports();
     }
     getSection = (sectionName:string)=>{
+
         try {
             return this.parsed[sectionName];
-
         } catch {
-            return Object();
+            return null;
         }
     };
     getDslVersion=()=>{
         const rawVersion = this.getSection(toscaDefinitionsVersionName);
+        if (rawVersion == null) {
+            return '';
+        }
         console.log('Raw version '.concat(rawVersion));
         const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
         return _version.toString();
     };
     getImports=()=>{
-        const rawImports = this.getSection('imports') as [];
+        let rawImports = this.getSection('imports');
+        if (rawImports == null) {
+            rawImports = [];
+        }
         console.log('Raw imports ' + rawImports);
         const _imports = new ImportsValidator(this.dslVersion, rawImports);
         return _imports;
@@ -161,24 +102,26 @@ class BlueprintContext {
 }
 
 class CloudifyWords {
+
     keywords: CompletionItem[];
     initialized: boolean;
     importedPlugins:string[];
     dslVersion:string;
 
     constructor() {
-        this.keywords = getCloudifyKeywords();
+        this.keywords = [];
         this.initialized = false;
         this.importedPlugins = [];
         this.dslVersion = '';
+        this.setupInitialListOfKeywords();    
     }
 
     public async update(uri:string) {
         const ctx = new BlueprintContext(uri);
-        this.addRelativeImports(uri);    
+        this._addRelativeImports(uri);    
         this.dslVersion = ctx.dslVersion;
         for (const plugin of ctx.imports.plugins) {
-            await this.importPlugin(plugin);
+            await this._importPlugin(plugin);
         }
     }
 
@@ -191,22 +134,23 @@ class CloudifyWords {
         }
     }
 
-    // TODO: Create a new function that will import base types.
-    // public async importTypes() {
-    //
-    // }
-
-    public addRelativeImports(documentUri:string) {
+    private _addRelativeImports(documentUri:string) {
         for (const value of getImportableYamls(documentUri)) {
             this.appendKeyword(value);
         }
     }
 
-    public async importPlugin(pluginName:string) {
-        if (!(typeof pluginName === 'string')) {
+    private async _importPlugin(pluginName:string) {
+
+        if ((pluginName == null) || (!(typeof pluginName === 'string'))) {
             return '';
         }
-        const pluginSubString = pluginName.match('^cloudify-[a-z]*-plugin$') as string[];
+
+        let pluginSubString = pluginName.match('^cloudify-[a-z]*-plugin$') as string[];
+        if (pluginSubString == null) {
+            pluginSubString = [];
+        }
+
         if (pluginSubString.length == 1) {
             const pluginName:string = pluginSubString[0];
             if (!this.importedPlugins.includes(pluginName)) {
@@ -228,6 +172,16 @@ class CloudifyWords {
             );    
         }
     };
+
+    setupInitialListOfKeywords=()=>{
+        appendCompletionItems(this.keywords, cloudifyKeywords);
+        appendCompletionItems(this.keywords, toscaDefinitionsVersionKeywords);
+        appendCompletionItems(this.keywords, importKeywords);
+        appendCompletionItems(this.keywords, pluginNames);
+        appendCompletionItems(this.keywords, inputKeywords);
+        appendCompletionItems(this.keywords, nodeTypeKeywords);
+    };
+
 }
 
 export const cloudify = new CloudifyWords();

@@ -6,6 +6,24 @@
 export const name = 'plugins';
 export const keywords = [];
 
+export const list = [
+    'cloudify-ansible-plugin',
+    'cloudify-aws-plugin',
+    'cloudify-azure-plugin',
+    'cloudify-docker-plugin',
+    'cloudify-fabric-plugin',
+    'cloudify-gcp-plugin',
+    'cloudify-helm-plugin',
+    'cloudify-kubernetes-plugin',
+    'cloudify-openstack-plugin',
+    'cloudify-serverless-plugin',
+    'cloudify-spot-ocean-plugin',
+    'cloudify-starlingx-plugin',
+    'cloudify-terraform-plugin',
+    'cloudify-terragrunt-plugin',
+    'cloudify-utilities-plugin',
+    'cloudify-vsphere-plugin'
+];
 
 export class validator {
     name:string;

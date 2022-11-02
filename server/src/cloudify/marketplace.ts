@@ -8,7 +8,7 @@ import {
 } from './rest';
 
 // For casting the response of each item in https://marketplace.cloudify.co/node_types.
-interface nodeTypeItem {
+interface NodeTypeItem {
     id: string;
     name: string;
     type: string;
@@ -19,7 +19,7 @@ interface nodeTypeItem {
 }
 
 // For casting the response of each item in https://marketplace.cloudify.co/plugins/[pluginName]/versions.
-interface versionResponse {
+interface VersionResponse {
     created_at: string;
     version:string;
     yaml_urls:[];
@@ -42,7 +42,7 @@ async function getPluginId(pluginName:string): Promise<string> {
     const url:string = protocol + '://' + domain + '/' + endpoint;
     return rawRequest(url, 'GET').then(
         result => {
-            const pluginItem = result.items[0] as nodeTypeItem;
+            const pluginItem = result.items[0] as NodeTypeItem;
             return pluginItem.id;
         }
     );
@@ -57,7 +57,7 @@ export async function getPluginVersions(pluginName:string) {
         result => {
             const versionIds = [];
             for (const key in result.items) {
-                const item = result.items[key] as versionResponse;
+                const item = result.items[key] as VersionResponse;
                 versionIds.push(item.version);
             }
             return versionIds.sort(
@@ -78,13 +78,13 @@ export async function getNodeTypesForPluginVersion(pluginName:string, pluginVers
     if ( pluginVersion === 'latest' ) {
         pluginVersion = await getLatestPluginVersion(pluginName);
     }
-    const nodeTypeItems:nodeTypeItem[] = [];
+    const nodeTypeItems:NodeTypeItem[] = [];
     const endpoint:string = 'node-types?&plugin_name=' + pluginName + '&plugin_version='  + pluginVersion;
     const url:string = baseUrl + endpoint;
     return rawRequest(url, 'GET').then(
         result => {
             for (const key in result.items) {
-                const item = result.items[key] as nodeTypeItem;
+                const item = result.items[key] as NodeTypeItem;
                 nodeTypeItems.push(item);
             }
             return nodeTypeItems;

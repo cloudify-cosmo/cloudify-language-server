@@ -4,9 +4,6 @@
  * ------------------------------------------------------------------------------------------ */
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-    keywords as dslVersionAsString,
-} from './toscaDefinitionsVersion';
 
 export const name = 'imports';
 export const keywords = [
@@ -19,36 +16,99 @@ export const keywords = [
 // TODO: Add find yaml files in subfolders and add them to import options.
 // TODO: Add version constraints prediction.
 
-class importItem {}
 
-class ItemValidator {
-    importItem:importItem;
-    isString:boolean;
+class PluginValidator {
+    // TODO: Support Properties and Properties Description.
+    // TODO: Validate the DSL versions supports properties and description/plugin import as a dict.
+    // TODO: To support version resolution.
 
-    constructor (dslVersion:string, importItem:importItem) {
-        if (dslVersion == null) {
-            this.isString = false;
-            this.importItem = '';
-        } else if (dslVersionAsString.includes(dslVersion)) {
-            this.isString = true;
-            this.importItem = importItem;
-        } else if (typeof importItem === 'string') {
-            this.isString = true;
-            this.importItem = importItem;
-        } else {
-            this.isString = false;
-            this.importItem = importItem as importItem;
-        }
+    rawImport:string|object;
+    dslVersion:string;
+    name:string;
+    version:string;
+    propertiesDescription:string;
+    properties:object;
+    _isPlugin:boolean;
+
+    constructor(dslVersion:string, importItem:string|object) {
+        this.dslVersion = dslVersion;
+        this.rawImport = importItem;
+        this.name = '';
+        this.version = '';
+        this.propertiesDescription = '';
+        this.properties = {};
+        this._isPlugin = false;
+        this.setupPlugin();
     }
 
-    toString() {
-        if (this.isString) {
+    setupPlugin=()=>{
+        if (typeof this.rawImport === 'string') {
+            this.assignVersion(this.rawImport);
+        } else if (typeof this.rawImport === 'object') {
+            for (const key in this.rawImport) {
+                if (key.includes('plugin:')) {
+                    this.assignVersion(key);
+                }
+            }
+        }
+    };
+
+    assignVersion=(line:string)=>{
+        const splitString:string[] = line.split(/[:?]/);
+        if (splitString.length >= 2) {
+            this.name = splitString[1];
+            this._isPlugin = true;
+            this.version = 'latest';
+        }
+        if (splitString.length == 3) {
+            this.version = splitString[2];
+        }
+    };
+
+    isPlugin=()=>{
+        return this._isPlugin;
+    };
+
+}
+
+class ItemValidator {
+    dslVersion:string;
+    importItem;
+    _asPlugin:PluginValidator;
+    pluginVersion:string;
+    pluginName:string;
+
+    constructor (dslVersion:string, importItem:string|object) {
+        this.dslVersion = dslVersion;
+        this.importItem = importItem;
+        this._asPlugin = new PluginValidator(dslVersion, importItem);
+        this.pluginVersion = this._asPlugin.version;
+        this.pluginName = this._asPlugin.name;
+    }
+
+    isString=()=>{
+        if (this.dslVersion == null) {
+            return false;
+        } else if (typeof this.importItem === 'string') {
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    toString=()=>{
+        if (this.isString()) {
             return this.importItem as string;
         } else {
             console.error('Unable to return item as string.');
             return '';
         }
-    }
+    };
+
+    isPlugin=()=>{
+        return this._asPlugin.isPlugin();
+    };
+
 }
 
 export class Validator {
@@ -65,26 +125,27 @@ export class Validator {
             this.rawImports = rawImports;
         }
         this.imports = [];
+        this.assignImports();
         this.plugins = [];
         this.assignPlugins();
     }
 
-    assignPlugins() {
-        try {
-            for (const rawImported of this.rawImports) {
-                const imported = new ItemValidator(this.dslVersion, rawImported);
-                this.imports.push(imported);
-                const stringImport = imported.toString();
-                if (stringImport.startsWith('plugin:')) {
-                    this.plugins.push(stringImport.replace('plugin:', ''));
-                }
-                console.log('plugins ' + this.plugins);
-            }
-        } catch (e) {
-            // Worse things could happen.
-            console.log(e);
+    assignImports=()=>{
+        for (const rawImported of this.rawImports) {
+            const imported = new ItemValidator(this.dslVersion, rawImported);
+            this.imports.push(imported);
         }
-    }
+        console.log('imports: ' + this.imports);
+    };
+
+    assignPlugins=()=>{
+        for (const imported of this.imports) {
+            if (imported.isPlugin()) {
+                this.plugins.push(imported.pluginName);
+            }
+        }
+        console.log('plugins ' + this.plugins);
+    };
 }
 
 function getImportsDir(referencePath:string): string {
