@@ -20,31 +20,11 @@ import {
 import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
-import {
-	getFromMarketplace
-} from './utils';
 
-const masterWordCompletionList = new Array();
-const nodeTypesCache = {};
-let createdNodeTypesCache:boolean = false;
-const cloudifyKeyWords = [
-	'tosca_definitions_version',
-	'cloudify_dsl_1_3',
-	'description',
-	'default',
-	'type',
-	'imports',
-	'inputs',
-	'dsl_definitions',
-	'labels',
-	'blueprint_labels',
-	'node_types',
-	'relationships',
-	'workflows',
-	'node_templates',
-	'outputs',
-	'capabilities',
-]
+import {
+	cloudify,
+} from './cloudify/wordcompletion';
+
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -59,6 +39,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 connection.onInitialize((params: InitializeParams) => {
 	const capabilities = params.capabilities;
+
 
 	// Does the client support the `workspace/configuration` request?
 	// If not, we fall back using global settings.
@@ -103,6 +84,9 @@ connection.onInitialized(() => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
+	connection.console.log(
+		'' + cloudify.init().then(result => {return result})
+	);
 });
 
 // The example settings
@@ -211,6 +195,8 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received an file change event');
 });
 
+const masterWordCompletionList = cloudify.keywords;
+
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
@@ -218,67 +204,7 @@ connection.onCompletion(
 		// which code complete got requested. For the example we ignore this
 		// info and always provide the same completion items.
 
-		// if (nodeTypesCache.length === 0) {
-		// 	getMarketplaceNodeTypes().then(
-		// 		result => {
-		// 			for (let item of result) {
-		// 				nodeTypesCache.push(item);
-		// 			}
-		// 		}
-		// 	)
-		// }
-		let currentIndex:number = 0;
-		for (let cloudifyKeyWord of cloudifyKeyWords) {
-		    masterWordCompletionList.push(
-				{
-					label: cloudifyKeyWord,
-					kind: CompletionItemKind.Text,
-					data: currentIndex,
-				}
-			);
-			currentIndex++;
-		};
-		if (!createdNodeTypesCache) {
-			getFromMarketplace(nodeTypesCache, 'node-types').then(
-				result => {
-					for (let key in result) {
-						let item = result[key];
-						if (item.type.startsWith('cloudify.nodes.')) {
-							masterWordCompletionList.push(
-								{
-									label: item.type,
-									kind: CompletionItemKind.Text,
-									data: key,
-								}
-							);
-							currentIndex++;
-						}
-				   }
-				}
-			);
-			createdNodeTypesCache = true;	
-		};
-		connection.console.log('Our word list ' + masterWordCompletionList);
-		// masterWordCompletionList.concat(cloudifyKeyWords, nodeTypesCache);
-		// console.log('Do we have nodeTypesCache ', nodeTypesCache);
 		return masterWordCompletionList;
-		// return [
-		// 	{
-		// 		label: 'TypeScript',
-		// 		kind: CompletionItemKind.Text,
-		// 		data: 1
-		// 	},
-		// 	{
-		// 		label: 'JavaScript',
-		// 		kind: CompletionItemKind.Text,
-		// 		data: 2
-		// 	},
-		// 	{
-		// 		label: 'cloudify.nodes.Root',
-		// 		kind: CompletionItemKind.Text,
-		// 		data: 3
-		// 	}
-		// ];
 	}
 );
 
