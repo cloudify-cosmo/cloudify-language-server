@@ -5,67 +5,68 @@
 
 import fetch from 'node-fetch';
 
+
 // For casting the response of our Marketplace API.
 interface JSONPagination {
-	'size': number,
-	'offset': number,
-	'total': number,
+    'size': number,
+    'offset': number,
+    'total': number,
 }
-export interface JSONItems {
-    [key: string]: Object;
+export interface JSONItems<T> {
+    [key: string]: T;
 }
-interface JSONResponse {
-    items: JSONItems;
-	pagination: JSONPagination;
-};
+interface JSONResponse<T> {
+    items: JSONItems<T>;
+    pagination: JSONPagination;
+}
 
-export function rawRequest(url:string, method:string, additionalParams={}): Promise<JSONResponse> {
+export function rawRequest<ItemType>(url:string, method:string, additionalParams={}): Promise<JSONResponse<ItemType>> {
     // For getting the response from a rest service.
-	const params = {
-		...additionalParams,
-		method: method,
-		headers: {
-			Accept: 'application/json',
-		}
-	}
-	console.log('Start rawRequest %s %s', url, method)
-	const pr = fetch(url, params).then(
-		resp => {
-			return resp.json();
-		}
-	) as Promise<JSONResponse>;
-	return pr;
+    const params = {
+        ...additionalParams,
+        method: method,
+        headers: {
+            Accept: 'application/json',
+        }
+    };
+    console.log('Start rawRequest %s %s', url, method);
+    const pr = fetch(url, params).then(
+        resp => {
+            return resp.json();
+        }
+    ) as Promise<JSONResponse<ItemType>>;
+    return pr;
 }
 
-export function paginatedRequest(
-	    url:string,
-		method:string,
-		offset:number=0,
-		size:number=500,
-		collectedData:JSONItems={},
-		additionalParams={}): Promise<JSONItems> {
-	// for getting paginated results.
-	const current_url:string = url + "?offset=" + offset + "&size=" + size;
-    const pr = rawRequest(current_url, method, additionalParams);
-	return pr.then(
-		_data => {
-			for (let key in _data.items) {
-				let value = _data.items[key];
-				let offsetKey = offset + +key;
-				collectedData[offsetKey] = value;
+// export function paginatedRequest(
+//     url:string,
+//     method:string,
+//     offset:integer=0,
+//     size:integer=500,
+//     collectedData:JSONItems,
+//     additionalParams={}): Promise<JSONItems> {
+//     // for getting paginated results.
+//     const current_url:string = url + '?offset=' + offset + '&size=' + size;
+//     const pr = rawRequest(current_url, method, additionalParams);
+//     return pr.then(
+//         result => {
+//             for (const key in result.items) {
+//                 const value = result.items[key];
+//                 const offsetKey = offset + +key;
+//                 collectedData[offsetKey] = value;
 
-			}
-			if (_data.pagination.total > offset) {
-				return paginatedRequest(
-					url,
-					method,
-					offset + size,
-					size,
-					collectedData,
-					additionalParams
-				);
-			}
-			return collectedData;
-		}
-	)
-}
+//             }
+//             if (result.pagination.total > offset) {
+//                 return paginatedRequest(
+//                     url,
+//                     method,
+//                     offset + size,
+//                     size,
+//                     collectedData,
+//                     additionalParams
+//                 );
+//             }
+//             return collectedData;
+//         }
+//     );
+// }
