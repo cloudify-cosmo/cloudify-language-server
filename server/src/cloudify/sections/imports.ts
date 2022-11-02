@@ -21,7 +21,7 @@ export const keywords = [
 
 class importItem {}
 
-class itemValidator {
+class ItemValidator {
     importItem:importItem;
     isString:boolean;
 
@@ -51,10 +51,10 @@ class itemValidator {
     }
 }
 
-export class validator {
+export class Validator {
     dslVersion:string;
     rawImports = [];
-    imports:itemValidator[];
+    imports:ItemValidator[];
     plugins:string[];
 
     constructor(dslVersion:string, rawImports:[]) {
@@ -72,7 +72,7 @@ export class validator {
     assignPlugins() {
         try {
             for (const rawImported of this.rawImports) {
-                const imported = new itemValidator(this.dslVersion, rawImported);
+                const imported = new ItemValidator(this.dslVersion, rawImported);
                 this.imports.push(imported);
                 const stringImport = imported.toString();
                 if (stringImport.startsWith('plugin:')) {

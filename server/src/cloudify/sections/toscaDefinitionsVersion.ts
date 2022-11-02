@@ -10,7 +10,7 @@ export const keywords = [
     'cloudify_dsl_1_5',
 ];
 
-export class validator {
+export class Validator {
     version:string;
     constructor (version:string) {
         this.version = version;

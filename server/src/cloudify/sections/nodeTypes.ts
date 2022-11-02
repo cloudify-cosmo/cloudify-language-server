@@ -9,23 +9,23 @@
  * ------------------------------------------------------------------------------------------ */
 
 export const name = 'node_types';
-export class validator {
+export class Validator {
     name:string;
     derivedFrom:string;
-    properties:nodeTypeProperties;
-    interfaces:nodeTypeInterfaces;
+    properties:NodeTypeProperties;
+    interfaces:NodeTypeInterfaces;
     constructor (name:string, derivedFrom:string, properties:object, interfaces:object) {
         this.name = name;
         this.derivedFrom = derivedFrom;
-        this.properties = properties as nodeTypeProperties;
-        this.interfaces = interfaces as nodeTypeInterfaces;
+        this.properties = properties as NodeTypeProperties;
+        this.interfaces = interfaces as NodeTypeInterfaces;
     }
 }
 
-class nodeTypeProperties {
+class NodeTypeProperties {
     [key: string]: object;
 }
 
-class nodeTypeInterfaces {
+class NodeTypeInterfaces {
     [key: string]: object;
 }

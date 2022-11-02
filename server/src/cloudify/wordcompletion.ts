@@ -15,13 +15,13 @@ import {
 import {
     name as toscaDefinitionsVersionName,
     keywords as toscaDefinitionsVersionKeywords,
-    validator as cloudifyToscaDefinitionsVersionValidator,
+    Validator as CloudifyToscaDefinitionsVersionValidator,
 } from './sections/toscaDefinitionsVersion';
 import {
     name as importsKeyword,
     keywords as importKeywords,
     getImportableYamls,
-    validator as importsValidator,
+    Validator as ImportsValidator,
 } from './sections/imports';
 import {
     name as nodeTypeKeyword,
@@ -127,7 +127,7 @@ function appendCompletionItems(mainList:CompletionItem[], newList:string[]) {
     return mainList;
 }
 
-class blueprintContext {
+class BlueprintContext {
     uri:string;
     parsed;
     dslVersion:string;
@@ -149,18 +149,18 @@ class blueprintContext {
     getDslVersion=()=>{
         const rawVersion = this.getSection(toscaDefinitionsVersionName);
         console.log('Raw version '.concat(rawVersion));
-        const _version = new cloudifyToscaDefinitionsVersionValidator(rawVersion);
+        const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
         return _version.toString();
     };
     getImports=()=>{
         const rawImports = this.getSection('imports') as [];
         console.log('Raw imports ' + rawImports);
-        const _imports = new importsValidator(this.dslVersion, rawImports);
+        const _imports = new ImportsValidator(this.dslVersion, rawImports);
         return _imports;
     };
 }
 
-class cloudifyWords {
+class CloudifyWords {
     keywords: CompletionItem[];
     initialized: boolean;
     importedPlugins:string[];
@@ -174,7 +174,7 @@ class cloudifyWords {
     }
 
     public async update(uri:string) {
-        const ctx = new blueprintContext(uri);
+        const ctx = new BlueprintContext(uri);
         this.addRelativeImports(uri);    
         this.dslVersion = ctx.dslVersion;
         for (const plugin of ctx.imports.plugins) {
@@ -206,7 +206,7 @@ class cloudifyWords {
         if (!(typeof pluginName === 'string')) {
             return '';
         }
-        const pluginSubString = pluginName.match('^cloudify\-[a-z]*\-plugin$') as string[];
+        const pluginSubString = pluginName.match('^cloudify-[a-z]*-plugin$') as string[];
         if (pluginSubString.length == 1) {
             const pluginName:string = pluginSubString[0];
             if (!this.importedPlugins.includes(pluginName)) {
@@ -230,4 +230,4 @@ class cloudifyWords {
     };
 }
 
-export const cloudify = new cloudifyWords();
+export const cloudify = new CloudifyWords();
