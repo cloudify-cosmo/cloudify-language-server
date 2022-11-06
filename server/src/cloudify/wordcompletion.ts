@@ -2,144 +2,250 @@
  * Copyright (c) Cloudify Platform LTD. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
+
 import {
-	CompletionItem,
-	CompletionItemKind,
+    CompletionItem,
 } from 'vscode-languageserver/node';
+
 import {
-	getNodeTypesForPluginVersion,
+    JSONItems,
+    TimeManager,
+    getCompletionItem,
+    appendCompletionItems,
+} from './utils';
+
+import {
+    getNodeTypesForPluginVersion,
 } from './marketplace';
 
+import {
+    getParsed,
+} from './parsing';
+
+import {
+    name as toscaDefinitionsVersionName,
+    keywords as toscaDefinitionsVersionKeywords,
+    Validator as CloudifyToscaDefinitionsVersionValidator,
+} from './sections/toscaDefinitionsVersion';
+
+import {
+    getImportableYamls,
+    name as importsKeyword,
+    keywords as importKeywords,
+    Validator as ImportsValidator,
+} from './sections/imports';
+
+import {
+    name as nodeTypeKeyword,
+    list as nodeTypeKeywords,
+    Validator as NodeTypeValidator,
+} from './sections/nodeTypes';
+
+import {
+    list as pluginNames,
+} from './sections/plugins';
+
+import {
+    name as inputsKeyword,
+    keywords as inputKeywords,
+    Validator as InputValidator,
+} from './sections/inputs';
+
 const cloudifyKeywords = [
-	'tosca_definitions_version',
-	'description',
-	'imports',
-	'inputs',
-	'dsl_definitions',
-	'labels',
-	'blueprint_labels',
-	'node_types',
-	'relationships',
-	'workflows',
-	'node_templates',
-	'outputs',
-	'capabilities',
-]
+    toscaDefinitionsVersionName,
+    'description',
+    importsKeyword,
+    inputsKeyword,
+    'dsl_definitions',
+    'labels',
+    'blueprint_labels',
+    nodeTypeKeyword,
+    'relationships',
+    'workflows',
+    'node_templates',
+    'outputs',
+    'capabilities',
+];
 
-const toscaDefinitionsVersionKeywords = [
-	'cloudify_dsl_1_3',
-	'cloudify_dsl_1_4',
-	'cloudify_dsl_1_5',
-]
+class BlueprintContext {
 
-// TODO: Add find yaml files in subfolders and add them to import options.
-// TODO: Add version constraints prediction.
-const importKeywords = [
-	'cloudify/types/types.yaml',
-	'https://cloudify.co/spec/cloudify/6.3.0/types.yaml',
-	'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
-	'plugin:',
-	'cloudify-ansible-plugin',
-	'cloudify-aws-plugin',
-	'cloudify-azure-plugin',
-	'cloudify-docker-plugin',
-	'cloudify-fabric-plugin',
-	'cloudify-gcp-plugin',
-	'cloudify-helm-plugin',
-	'cloudify-kubernetes-plugin',
-	'cloudify-openstack-plugin',
-	'cloudify-serverless-plugin',
-	'cloudify-spot-ocean-plugin',
-	'cloudify-starlingx-plugin',
-	'cloudify-terraform-plugin',
-	'cloudify-terragrunt-plugin',
-	'cloudify-utilities-plugin',
-	'cloudify-vsphere-plugin',
-]
+    // Blueprint Context stores the current YAML state.
+    // It then initializes each of the top level sections, e.g. inputs, imports, node_types.
+    // // For each top level section, it checks what we currently have as a value, e.g:
+    // // tosca_definitions_version: cloudify_dsl_1_3
+    // // the value is "cloudify_dsl_1_3." Values can also be complex, lists, maps, etc.
+    // After we know the current values of the sections we can determine if there are
+    // other actions to perform. For example:
+    // Should we try to import node types from an imported plugin or file?
+    // Should we activate or deactivate certain capabilities, based on DSL version?
+    // Suggest keywords, based on node instance properties.
+    // Suggest instrinsic function arguments, based on existing inputs or node templates.
 
-const inputKeywords = [
-	'type', 'description', 'required', 'default'
-]
+    uri:string; // The file location of master blueprint file.
+    parsed:JSONItems<object|string|[]>;  // The raw parsed YAML data (JSON).
+    dslVersion:string; // The resolved current DSL version.
+    imports:ImportsValidator|null; // A list of imports.
+    inputs:InputValidator|null; // A dictionary of inputs.
+    nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
 
-const nodeTypeKeywords = [
-    'cloudify.nodes.Port',
-    'cloudify.nodes.Root',
-    'cloudify.nodes.Tier',
-    'cloudify.nodes.Router',
-    'cloudify.nodes.Subnet',
-    'cloudify.nodes.Volume',
-    'cloudify.nodes.Network',
-    'cloudify.nodes.Compute',
-    'cloudify.nodes.Container',
-    'cloudify.nodes.VirtualIP',
-    'cloudify.nodes.FileSystem',
-    'cloudify.nodes.ObjectStorage',
-    'cloudify.nodes.LoadBalancer',
-    'cloudify.nodes.SecurityGroup',
-    'cloudify.nodes.SoftwareComponent',
-    'cloudify.nodes.DBMS',
-    'cloudify.nodes.Database',
-    'cloudify.nodes.WebServer',
-    'cloudify.nodes.ApplicationServer',
-    'cloudify.nodes.MessageBusServer',
-    'cloudify.nodes.ApplicationModule',
-    'cloudify.nodes.CloudifyManager',
-    'cloudify.nodes.Component',
-    'cloudify.nodes.ServiceComponent',
-    'cloudify.nodes.SharedResource',
-    'cloudify.nodes.Blueprint',
-    'cloudify.nodes.PasswordSecret'
-]
+    // TODO: Add Data types:
+    // dataTypes; // A dictionary of data types.
+    // TODO: Add node templates.
+    // TODO: Add relationships.
+    // TODO: Add capabilities and outputs. (They are basically identical.)
+    // TODO: Add DSL Definitions.
+    // TODO: Add description.
 
-function getCompletionItem(newLabel:string, newData:any): CompletionItem {
-	return {
-		label: newLabel,
-		kind: CompletionItemKind.Text,
-		data: newData,
-	}
+    constructor(uri:string) {
+        this.uri = uri;
+        this.parsed = {};
+        this.dslVersion = '';
+        this.imports = null;
+        this.inputs = null;
+        this.nodeTypes = null;
+        this.refresh();
+    }
+
+    refresh=()=>{
+        this.parsed = getParsed(this.uri);
+        this.dslVersion = this.getDslVersion();
+        this.imports = this.getImports();
+        this.nodeTypes = this.getNodeTypes();
+        this.inputs = this.getInputs();
+        // this.dataTypes = this.getDataTypes();
+    };
+
+    getSection = (sectionName:string)=>{
+        try {
+            return this.parsed[sectionName];
+        } catch {
+            return null;
+        }
+    };
+
+    getDslVersion=()=>{
+        const rawVersion = this.getSection(toscaDefinitionsVersionName);
+        if (rawVersion == null) {
+            return '';
+        } else if (typeof rawVersion === 'object') {
+            return '';
+        }
+        console.log('Raw version '.concat(rawVersion));
+        const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
+        return _version.toString();
+    };
+
+    getImports=()=>{
+        const rawImports = this.getSection('imports');
+        console.log('Raw imports ' + rawImports);
+        const _imports = new ImportsValidator(this.dslVersion, rawImports);
+        return _imports;
+    };
+
+    getInputs=()=>{
+        const rawInputs = this.getSection('inputs');
+        console.log('Raw inputs: ' + rawInputs);
+        const _inputs = new InputValidator(rawInputs);
+        return _inputs;
+    };
+
+    getDataTypes=()=>{
+        return [];
+    };
+    getNodeTypes=()=>{
+        const rawNodeTypes = this.getSection('node_types');
+        console.log('Raw node_types: ' + rawNodeTypes);
+        const _nodeTypes = new NodeTypeValidator(rawNodeTypes);
+        return _nodeTypes;
+    };
 }
 
-export function getCloudifyKeywords() {
-	const masterWordCompletionList:CompletionItem[] = new Array();
-	appendCompletionItems(masterWordCompletionList, cloudifyKeywords);
-	appendCompletionItems(masterWordCompletionList, toscaDefinitionsVersionKeywords);
-	appendCompletionItems(masterWordCompletionList, importKeywords);
-	appendCompletionItems(masterWordCompletionList, inputKeywords);
-	appendCompletionItems(masterWordCompletionList, nodeTypeKeywords);
-	return masterWordCompletionList;
+class CloudifyWords {
+
+    timer:TimeManager;
+
+    ctx:BlueprintContext|null;
+    keywords: CompletionItem[];
+    importedPlugins:string[];
+    dslVersion:string;
+
+    constructor() {
+        this.ctx = null;
+        this.keywords = [];
+        this.importedPlugins = [];
+        this.dslVersion = '';
+        this.setupInitialListOfKeywords();
+        this.timer = new TimeManager(2);
+    }
+
+    public async init(uri:string) {
+        if (this.ctx == null) {
+            this.ctx = new BlueprintContext(uri);
+        } else if (this.timer.isReady()) {
+            this.addRelativeImports(uri);
+            this.dslVersion = this.ctx.dslVersion;
+            await this.importPlugins();
+        }
+    }
+
+    private addRelativeImports(documentUri:string) {
+        for (const value of getImportableYamls(documentUri)) {
+            this.appendKeyword(value);
+        }
+    }
+
+    public async importPlugins() {
+        if (this.ctx != null) {
+            if (this.ctx.imports != null) {
+                for (const plugin of this.ctx.imports.plugins) {
+                    await this._importPlugin(plugin);
+                }
+            }
+        }
+    }
+
+    private async _importPlugin(pluginName:string) {
+
+        if ((pluginName == null) || (!(typeof pluginName === 'string'))) {
+            return '';
+        }
+
+        let pluginSubString = pluginName.match('^cloudify-[a-z]*-plugin$') as string[];
+        if (pluginSubString == null) {
+            pluginSubString = [];
+        }
+
+        if (pluginSubString.length == 1) {
+            const pluginName:string = pluginSubString[0];
+            if (!this.importedPlugins.includes(pluginName)) {
+                const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
+                for (const nodeType of nodeTypes) {
+                    this.appendKeyword(nodeType.type);
+                }
+                this.importedPlugins.push(pluginName);
+            }
+        }
+    }
+
+    appendKeyword = (keyword:string)=>{
+        const keywordNames = this.keywords.map((obj) => obj.label);
+        if (!keywordNames.includes(keyword)) {
+            const currentIndex = this.keywords.length;
+            this.keywords.push(
+                getCompletionItem(keyword, currentIndex)
+            );    
+        }
+    };
+
+    setupInitialListOfKeywords=()=>{
+        appendCompletionItems(this.keywords, cloudifyKeywords);
+        appendCompletionItems(this.keywords, toscaDefinitionsVersionKeywords);
+        appendCompletionItems(this.keywords, importKeywords);
+        appendCompletionItems(this.keywords, pluginNames);
+        appendCompletionItems(this.keywords, inputKeywords);
+        appendCompletionItems(this.keywords, nodeTypeKeywords);
+    };
+
 }
 
-function appendCompletionItems(mainList:CompletionItem[], newList:string[]) {
-	let currentIndex:number = mainList.length;
-	for (let keyword of newList) {
-		mainList.push(getCompletionItem(keyword, currentIndex));
-		currentIndex++;
-	}
-	return mainList;
-}
-
-class cloudifyWords {
-	keywords: CompletionItem[];
-
-	constructor() {
-		this.keywords = getCloudifyKeywords();
-	}
-
-	public async init () {
-		let nodeTypes = await getNodeTypesForPluginVersion('cloudify-aws-plugin');
-		for (let nodeType of nodeTypes) {
-			this.appendKeyword(nodeType.type);
-		}
-		return '';
-	}
-
-	appendKeyword = (keyword:string)=>{
-        let currentIndex = this.keywords.length;
-		this.keywords.push(
-			getCompletionItem(keyword, currentIndex)
-		)
-	}
-
-}
-
-export const cloudify = new cloudifyWords();
+export const cloudify = new CloudifyWords();
