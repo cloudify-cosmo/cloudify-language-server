@@ -4,6 +4,9 @@
  * ------------------------------------------------------------------------------------------ */
 
 import fetch from 'node-fetch';
+import {
+    JSONItems
+} from './utils';
 
 
 // For casting the response of our Marketplace API.
@@ -11,9 +14,6 @@ interface JSONPagination {
     'size': number,
     'offset': number,
     'total': number,
-}
-export interface JSONItems<T> {
-    [key: string]: T;
 }
 interface JSONResponse<T> {
     items: JSONItems<T>;
