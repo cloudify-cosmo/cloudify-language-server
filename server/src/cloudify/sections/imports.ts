@@ -113,13 +113,14 @@ class ItemValidator {
 
 export class Validator {
     dslVersion:string;
-    rawImports = [];
+    rawImports:string[]|object[];
     imports:ItemValidator[];
     plugins:string[];
 
-    constructor(dslVersion:string, rawImports:[]) {
+    constructor(dslVersion:string, rawImports:[]|object|string|null) {
         this.dslVersion = dslVersion;
-        if (rawImports === undefined) {
+        this.rawImports = [];
+        if (!Array.isArray(rawImports)) {
             this.rawImports = [];
         } else if (rawImports.length > 0) {
             this.rawImports = rawImports;
