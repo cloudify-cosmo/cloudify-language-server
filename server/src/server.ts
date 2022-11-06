@@ -24,16 +24,15 @@ import {
 } from './cloudify/wordcompletion';
 
 
-// Create a connection for the server, using Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
-const connection = createConnection(ProposedFeatures.all);
-
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
+
+// Create a connection for the server, using Node's IPC as a transport.
+// Also include all preview / proposed LSP features.
+const connection = createConnection(ProposedFeatures.all);
 
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
@@ -81,7 +80,6 @@ connection.onInitialized(() => {
             connection.console.log('Workspace folder change event received.');
         });
     }
-    cloudify.init();
 });
 
 // The example settings
@@ -140,8 +138,12 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
-    await cloudify.update(textDocument.uri);
     const settings = await getDocumentSettings(textDocument.uri);
+
+    await cloudify.init(textDocument.uri);
+    if (cloudify.ctx != null) {
+        cloudify.ctx.refresh();
+    }
 
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
