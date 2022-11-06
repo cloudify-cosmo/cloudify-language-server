@@ -6,17 +6,10 @@
 import {
     rawRequest,
 } from './rest';
+import {
+    NodeTypeItem,
+} from './sections/nodeTypes';
 
-// For casting the response of each item in https://marketplace.cloudify.co/node_types.
-interface NodeTypeItem {
-    id: string;
-    name: string;
-    type: string;
-    description: string;
-    plugin_name: string;
-    plugin_version: string;
-    properties: Record<string, unknown>;
-}
 
 // For casting the response of each item in https://marketplace.cloudify.co/plugins/[pluginName]/versions.
 interface VersionResponse {

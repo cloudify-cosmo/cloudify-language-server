@@ -11,24 +11,20 @@
 export const name = 'node_types';
 
 export class Validator {
-    name:string;
-    derivedFrom:string;
-    properties:NodeTypeProperties;
-    interfaces:NodeTypeInterfaces;
-    constructor (name:string, derivedFrom:string, properties:object, interfaces:object) {
-        this.name = name;
-        this.derivedFrom = derivedFrom;
-        this.properties = properties as NodeTypeProperties;
-        this.interfaces = interfaces as NodeTypeInterfaces;
+    rawItems;
+    constructor (rawItems:object|string|null) {
+        this.rawItems = rawItems;
     }
 }
 
-class NodeTypeProperties {
-    [key: string]: object;
-}
-
-class NodeTypeInterfaces {
-    [key: string]: object;
+export interface NodeTypeItem {
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    plugin_name: string;
+    plugin_version: string;
+    properties: Record<string, unknown>;
 }
 
 export const list = [
