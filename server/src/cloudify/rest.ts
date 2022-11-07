@@ -29,7 +29,7 @@ export function rawRequest<ItemType>(url:string, method:string, additionalParams
             Accept: 'application/json',
         }
     };
-    console.log('Start rawRequest %s %s', url, method);
+    // console.log('Start rawRequest %s %s', url, method);
     const pr = fetch(url, params).then(
         resp => {
             return resp.json();

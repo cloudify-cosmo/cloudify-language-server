@@ -69,7 +69,7 @@ export class Validator {
         this.raw = raw;
         this.contents = Object();
         this.assign();
-        console.log('inputs: ' + this.contents);
+        // console.log('inputs: ' + this.contents);
     }
     assign=()=>{
         const inputs = Object(this.raw);

@@ -5,6 +5,7 @@
 
 import {
     CompletionItem,
+    TextDocumentPositionParams,
 } from 'vscode-languageserver/node';
 
 import {
@@ -19,7 +20,9 @@ import {
 } from './marketplace';
 
 import {
+    readLines,
     getParsed,
+    getCursor,
 } from './parsing';
 
 import {
@@ -51,7 +54,7 @@ import {
     Validator as InputValidator,
 } from './sections/inputs';
 
-const cloudifyKeywords = [
+const cloudifyTopLevelKeywords = [
     toscaDefinitionsVersionName,
     'description',
     importsKeyword,
@@ -82,8 +85,11 @@ class BlueprintContext {
     // Suggest instrinsic function arguments, based on existing inputs or node templates.
 
     uri:string; // The file location of master blueprint file.
+    section:string|null;
     parsed:JSONItems<object|string|[]>;  // The raw parsed YAML data (JSON).
-    dslVersion:string; // The resolved current DSL version.
+    lines:string[];
+    dslVersion:string; // The resolved current DSL version. May not be null.
+    level:string|null;
     imports:ImportsValidator|null; // A list of imports.
     inputs:InputValidator|null; // A dictionary of inputs.
     nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
@@ -98,8 +104,11 @@ class BlueprintContext {
 
     constructor(uri:string) {
         this.uri = uri;
+        this.section = null;
         this.parsed = {};
-        this.dslVersion = '';
+        this.lines = [];
+        this.dslVersion = ''; // All others may be null, but this must be a string for other fns that use it.
+        this.level = null;
         this.imports = null;
         this.inputs = null;
         this.nodeTypes = null;
@@ -108,11 +117,29 @@ class BlueprintContext {
 
     refresh=()=>{
         this.parsed = getParsed(this.uri);
+        this.lines = readLines(this.uri);
+        this.level = this.getLevel(null);
         this.dslVersion = this.getDslVersion();
         this.imports = this.getImports();
         this.nodeTypes = this.getNodeTypes();
         this.inputs = this.getInputs();
         // this.dataTypes = this.getDataTypes();
+    };
+
+    getLevel=(currentLineNumber:number|null)=>{
+        if (currentLineNumber == null) {
+            currentLineNumber = 0;
+        }
+        const lines = this.lines.reverse();
+        for (let n = currentLineNumber; n < this.lines.length; n++) {
+            const line = lines[n];
+            const splitLine:string[] = line.split(':');
+            const candidate = cloudifyTopLevelKeywords.find(element => element == splitLine[0]);
+            if (candidate !== undefined) {
+                return candidate;
+            }
+        }
+        return null;
     };
 
     getSection = (sectionName:string)=>{
@@ -130,21 +157,21 @@ class BlueprintContext {
         } else if (typeof rawVersion === 'object') {
             return '';
         }
-        console.log('Raw version '.concat(rawVersion));
+        // console.log('Raw version '.concat(rawVersion));
         const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
         return _version.toString();
     };
 
     getImports=()=>{
         const rawImports = this.getSection('imports');
-        console.log('Raw imports ' + rawImports);
+        // console.log('Raw imports ' + rawImports);
         const _imports = new ImportsValidator(this.dslVersion, rawImports);
         return _imports;
     };
 
     getInputs=()=>{
         const rawInputs = this.getSection('inputs');
-        console.log('Raw inputs: ' + rawInputs);
+        // console.log('Raw inputs: ' + rawInputs);
         const _inputs = new InputValidator(rawInputs);
         return _inputs;
     };
@@ -154,7 +181,7 @@ class BlueprintContext {
     };
     getNodeTypes=()=>{
         const rawNodeTypes = this.getSection('node_types');
-        console.log('Raw node_types: ' + rawNodeTypes);
+        // console.log('Raw node_types: ' + rawNodeTypes);
         const _nodeTypes = new NodeTypeValidator(rawNodeTypes);
         return _nodeTypes;
     };
@@ -167,22 +194,25 @@ class CloudifyWords {
     ctx:BlueprintContext|null;
     keywords: CompletionItem[];
     importedPlugins:string[];
+    nodeTypeKeywords:CompletionItem[];
     dslVersion:string;
 
     constructor() {
         this.ctx = null;
         this.keywords = [];
         this.importedPlugins = [];
+        this.nodeTypeKeywords = [];
         this.dslVersion = '';
         this.setupInitialListOfKeywords();
         this.timer = new TimeManager(2);
     }
 
-    public async init(uri:string) {
+    public async refresh(uri:string) {
         if (this.ctx == null) {
             this.ctx = new BlueprintContext(uri);
-        } else if (this.timer.isReady()) {
             this.addRelativeImports(uri);
+        } else if (this.timer.isReady()) {
+            this.ctx.refresh();
             this.dslVersion = this.ctx.dslVersion;
             await this.importPlugins();
         }
@@ -238,7 +268,7 @@ class CloudifyWords {
     };
 
     setupInitialListOfKeywords=()=>{
-        appendCompletionItems(this.keywords, cloudifyKeywords);
+        appendCompletionItems(this.keywords, cloudifyTopLevelKeywords);
         appendCompletionItems(this.keywords, toscaDefinitionsVersionKeywords);
         appendCompletionItems(this.keywords, importKeywords);
         appendCompletionItems(this.keywords, pluginNames);
@@ -246,6 +276,40 @@ class CloudifyWords {
         appendCompletionItems(this.keywords, nodeTypeKeywords);
     };
 
+    public contextualizedKeywords(textDoc:TextDocumentPositionParams):CompletionItem[] {
+        const currentKeywordOptions:CompletionItem[] = [];
+
+        const cursor = getCursor(textDoc);
+        console.log(cursor);
+
+        if ((this.ctx == null) || (textDoc.position.character <= 2)) {
+            appendCompletionItems(currentKeywordOptions, cloudifyTopLevelKeywords);
+            return currentKeywordOptions;
+        }
+        this.ctx.section = this.ctx.level;
+
+        if ((this.ctx.level === toscaDefinitionsVersionName) && (this.dslVersion === '')) {
+            appendCompletionItems(currentKeywordOptions, toscaDefinitionsVersionKeywords);
+            return currentKeywordOptions;
+        } else if ((this.ctx.level === toscaDefinitionsVersionName) && (this.dslVersion !== '')) {
+            this.ctx.level = null;
+        }
+
+        if (this.ctx.level === importsKeyword) {
+            if (cursor.words.includes('plugin:')) {
+                appendCompletionItems(currentKeywordOptions, pluginNames);
+                return currentKeywordOptions;
+            }
+            appendCompletionItems(currentKeywordOptions, importKeywords);
+            return currentKeywordOptions;
+        }
+
+        if (this.ctx.section == null) {
+            appendCompletionItems(currentKeywordOptions, cloudifyTopLevelKeywords);
+            return currentKeywordOptions; 
+        }
+        return this.keywords;
+    }
 }
 
 export const cloudify = new CloudifyWords();
