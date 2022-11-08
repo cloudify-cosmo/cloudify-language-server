@@ -194,12 +194,6 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
     (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-        // The pass parameter contains the position of the text document in
-        // which code complete got requested. For the example we ignore this
-        // info and always provide the same completion items.
-        // connection.console.log('Line: ' + _textDocumentPosition.position.line);
-        // connection.console.log('Character: ' + _textDocumentPosition.position.character);
-        // return cloudify.keywords;
         return cloudify.contextualizedKeywords(_textDocumentPosition);
     }
 );

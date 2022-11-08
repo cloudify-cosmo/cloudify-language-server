@@ -12,12 +12,13 @@ import {
     JSONItems,
 } from './utils';
 
-interface cursor {
+export interface cursor {
     line:string;
     lineLength:number;
     words:string[];
     word:string;
     wordLength:number;
+    indentation:number;
 }
 
 export function getParsed(uri:string) {
@@ -80,5 +81,6 @@ export function getCursor(textDoc:TextDocumentPositionParams):cursor {
         words:currentLineSplit,
         word: currentWord,
         wordLength: currentWord.length,
+        indentation: 0,
     } as cursor;
 }

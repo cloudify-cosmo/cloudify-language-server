@@ -3,71 +3,38 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import {
-    CompletionItem,
-    TextDocumentPositionParams,
-} from 'vscode-languageserver/node';
-
-import {
-    JSONItems,
-    TimeManager,
-    getCompletionItem,
-    appendCompletionItems,
-} from './utils';
-
-import {
-    getNodeTypesForPluginVersion,
-} from './marketplace';
-
-import {
-    readLines,
-    getParsed,
-    getCursor,
-} from './parsing';
-
-import {
-    name as toscaDefinitionsVersionName,
-    keywords as toscaDefinitionsVersionKeywords,
-    Validator as CloudifyToscaDefinitionsVersionValidator,
-} from './sections/toscaDefinitionsVersion';
-
-import {
-    getImportableYamls,
-    name as importsKeyword,
-    keywords as importKeywords,
-    Validator as ImportsValidator,
-} from './sections/imports';
-
-import {
-    name as nodeTypeKeyword,
-    list as nodeTypeKeywords,
-    Validator as NodeTypeValidator,
-} from './sections/nodeTypes';
-
-import {
-    list as pluginNames,
-} from './sections/plugins';
-
-import {
-    name as inputsKeyword,
-    keywords as inputKeywords,
-    Validator as InputValidator,
-} from './sections/inputs';
+import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
+import {JSONItems, TimeManager, getCompletionItem, appendCompletionItems} from './utils';
+import {getNodeTypesForPluginVersion} from './marketplace';
+import {cursor, readLines, getParsed, getCursor} from './parsing';
+import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords, Validator as CloudifyToscaDefinitionsVersionValidator} from './sections/toscaDefinitionsVersion';
+import {list as pluginNames} from './sections/plugins';
+import {name as descriptionName} from './sections/description';
+import {name as labelsName} from './sections/labels';
+import {name as blueprintLabelsName} from './sections/blueprintLabels';
+import {getImportableYamls, name as importsKeyword, keywords as importKeywords, Validator as ImportsValidator} from './sections/imports';
+import {name as inputsKeyword, keywords as inputKeywords, Validator as InputValidator, inputTypes} from './sections/inputs';
+import {name as dslDefnitionName} from './sections/dslDefinitions';
+import {name as nodeTypeKeyword, list as nodeTypeKeywords, Validator as NodeTypeValidator} from './sections/nodeTypes';
+import {name as nodeTemplatesName} from './sections/nodeTemplates';
+import {name as relationshipsName} from './sections/relationships';
+import {name as workflowsName} from './sections/workflows';
+import {name as capabilitiesName, alternateName as outputsName} from './sections/capabilities';
 
 const cloudifyTopLevelKeywords = [
     toscaDefinitionsVersionName,
-    'description',
+    descriptionName,
+    labelsName,
+    blueprintLabelsName,
     importsKeyword,
     inputsKeyword,
-    'dsl_definitions',
-    'labels',
-    'blueprint_labels',
+    dslDefnitionName,
     nodeTypeKeyword,
-    'relationships',
-    'workflows',
-    'node_templates',
-    'outputs',
-    'capabilities',
+    nodeTemplatesName,
+    relationshipsName,
+    workflowsName,
+    outputsName,
+    capabilitiesName,
 ];
 
 class BlueprintContext {
@@ -87,9 +54,9 @@ class BlueprintContext {
     uri:string; // The file location of master blueprint file.
     section:string|null;
     parsed:JSONItems<object|string|[]>;  // The raw parsed YAML data (JSON).
-    lines:string[];
+    lines:string[]; // The current lines in the blueprint file.
     dslVersion:string; // The resolved current DSL version. May not be null.
-    level:string|null;
+    cursor:cursor;
     imports:ImportsValidator|null; // A list of imports.
     inputs:InputValidator|null; // A dictionary of inputs.
     nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
@@ -108,7 +75,7 @@ class BlueprintContext {
         this.parsed = {};
         this.lines = [];
         this.dslVersion = ''; // All others may be null, but this must be a string for other fns that use it.
-        this.level = null;
+        this.cursor = {line: '', lines: [], lineLength: 0, words: [], word: '', wordLength: 0, indentation: 0} as cursor;
         this.imports = null;
         this.inputs = null;
         this.nodeTypes = null;
@@ -118,7 +85,7 @@ class BlueprintContext {
     refresh=()=>{
         this.parsed = getParsed(this.uri);
         this.lines = readLines(this.uri);
-        this.level = this.getLevel(null);
+        this.section = this.getDSLSection(null);
         this.dslVersion = this.getDslVersion();
         this.imports = this.getImports();
         this.nodeTypes = this.getNodeTypes();
@@ -126,20 +93,27 @@ class BlueprintContext {
         // this.dataTypes = this.getDataTypes();
     };
 
-    getLevel=(currentLineNumber:number|null)=>{
+    getDSLSection=(currentLineNumber:number|null)=>{
         if (currentLineNumber == null) {
+            currentLineNumber = 0;
+        } else if (currentLineNumber < 0) {
             currentLineNumber = 0;
         }
         const lines = this.lines.reverse();
+        console.log('lines: ' + lines);
         for (let n = currentLineNumber; n < this.lines.length; n++) {
             const line = lines[n];
-            const splitLine:string[] = line.split(':');
-            const candidate = cloudifyTopLevelKeywords.find(element => element == splitLine[0]);
-            if (candidate !== undefined) {
+            const firstKey: string[] = line.split(':');
+            const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
+            if (cloudifyTopLevelKeywords.includes(candidate)) {
                 return candidate;
             }
         }
         return null;
+    };
+
+    setDSLSection=(currentLineNumber:number)=>{
+        this.section = this.getDSLSection(currentLineNumber);
     };
 
     getSection = (sectionName:string)=>{
@@ -194,6 +168,7 @@ class CloudifyWords {
     ctx:BlueprintContext|null;
     keywords: CompletionItem[];
     importedPlugins:string[];
+    relativeImports:string[];
     nodeTypeKeywords:CompletionItem[];
     dslVersion:string;
 
@@ -201,10 +176,11 @@ class CloudifyWords {
         this.ctx = null;
         this.keywords = [];
         this.importedPlugins = [];
+        this.relativeImports = [];
         this.nodeTypeKeywords = [];
         this.dslVersion = '';
         this.setupInitialListOfKeywords();
-        this.timer = new TimeManager(2);
+        this.timer = new TimeManager(1);
     }
 
     public async refresh(uri:string) {
@@ -220,7 +196,8 @@ class CloudifyWords {
 
     private addRelativeImports(documentUri:string) {
         for (const value of getImportableYamls(documentUri)) {
-            this.appendKeyword(value);
+            this.relativeImports.push(value);
+            this.appendKeyword(value); // We are not using this list very much after context addition, but still not removing it.
         }
     }
 
@@ -267,6 +244,16 @@ class CloudifyWords {
         }
     };
 
+    appendCompletionItem = (keyword:string, target:CompletionItem[])=>{
+        const keywordNames = target.map((obj) => obj.label);
+        if (!keywordNames.includes(keyword)) {
+            const currentIndex = target.length;
+            target.push(
+                getCompletionItem(keyword, currentIndex)
+            );    
+        }
+    };
+
     setupInitialListOfKeywords=()=>{
         appendCompletionItems(this.keywords, cloudifyTopLevelKeywords);
         appendCompletionItems(this.keywords, toscaDefinitionsVersionKeywords);
@@ -276,40 +263,136 @@ class CloudifyWords {
         appendCompletionItems(this.keywords, nodeTypeKeywords);
     };
 
+    refreshCursor=(textDoc:TextDocumentPositionParams)=>{
+        if (this.ctx != null) {
+            this.ctx.cursor = getCursor(textDoc);
+            this.ctx.setDSLSection(textDoc.position.line);
+        }
+    };
+
     public contextualizedKeywords(textDoc:TextDocumentPositionParams):CompletionItem[] {
+        // We want to suggest keywords based on the current situation.
+        this.refreshCursor(textDoc);
         const currentKeywordOptions:CompletionItem[] = [];
-
-        const cursor = getCursor(textDoc);
-        console.log(cursor);
-
-        if ((this.ctx == null) || (textDoc.position.character <= 2)) {
-            appendCompletionItems(currentKeywordOptions, cloudifyTopLevelKeywords);
-            return currentKeywordOptions;
-        }
-        this.ctx.section = this.ctx.level;
-
-        if ((this.ctx.level === toscaDefinitionsVersionName) && (this.dslVersion === '')) {
-            appendCompletionItems(currentKeywordOptions, toscaDefinitionsVersionKeywords);
-            return currentKeywordOptions;
-        } else if ((this.ctx.level === toscaDefinitionsVersionName) && (this.dslVersion !== '')) {
-            this.ctx.level = null;
+        if ((this.ctx == null) || (this.ctx.section == null)) {
+            return this.returnTopLevel(currentKeywordOptions);
         }
 
-        if (this.ctx.level === importsKeyword) {
-            if (cursor.words.includes('plugin:')) {
-                appendCompletionItems(currentKeywordOptions, pluginNames);
+        if (this.isTosca()) {
+            if (this.dslUnset()) {
+                return this.returnTosca(currentKeywordOptions);
+            }
+        }
+
+        if (this.isImports()) {
+            if (this.isPluginImports()) {
+                return this.returnPluginImports(currentKeywordOptions);
+            }
+            return this.returnImports(currentKeywordOptions);
+        }
+
+        if (this.isInput()) {
+            if (this.returnInputKeywords()) {
+                appendCompletionItems(currentKeywordOptions, inputKeywords);
                 return currentKeywordOptions;
             }
-            appendCompletionItems(currentKeywordOptions, importKeywords);
-            return currentKeywordOptions;
+            if (this.returnInputTypeKeywords()) {
+                appendCompletionItems(currentKeywordOptions, inputTypes);
+                return currentKeywordOptions;
+            }
         }
 
-        if (this.ctx.section == null) {
-            appendCompletionItems(currentKeywordOptions, cloudifyTopLevelKeywords);
-            return currentKeywordOptions; 
-        }
-        return this.keywords;
+        // if (this.ctx.section == null) {
+        //     return this.returnTopLevel(currentKeywordOptions);
+        // }
+        return [];
+        // return this.keywords;
     }
+
+    returnTopLevel=(list:CompletionItem[])=>{
+        appendCompletionItems(list, cloudifyTopLevelKeywords);
+        return list;
+    };
+
+    isTosca=():boolean=>{
+        if (this.ctx != null) {
+            if (this.ctx.section === toscaDefinitionsVersionName) {
+                return true;
+            }
+        }
+        return false;
+    };
+    dslUnset=()=>{
+        if (this.dslVersion === '') {
+            return true;
+        }
+        return false;
+
+    };
+    returnTosca=(list:CompletionItem[])=>{
+        appendCompletionItems(list, toscaDefinitionsVersionKeywords);
+        return list;
+    };
+    isImports=():boolean=>{
+        if (this.ctx != null) {
+            if (this.ctx.section === importsKeyword) {
+                return true;
+            }
+        }
+        return false;
+    };
+    isPluginImports=():boolean=>{
+        if (this.ctx == null) {
+            return false;
+        }
+        if (this.ctx.cursor.words.includes('plugin:')) {
+            return true;
+        }
+        return false;
+    };
+    returnImports=(list:CompletionItem[])=>{
+        appendCompletionItems(list, importKeywords);
+        appendCompletionItems(list, this.relativeImports);
+        return list;
+    };
+    returnPluginImports=(list:CompletionItem[])=>{
+        appendCompletionItems(list, pluginNames);
+        return list;
+    };
+    isInput=():boolean=>{
+        if (this.ctx == null) {
+            return false;
+        }
+        if (this.ctx.section != inputsKeyword) {
+            return false;
+        }
+        return true;
+    };
+    returnInputKeywords=():boolean=>{
+        if (this.ctx == null) {
+            return false;
+        }
+        if (this.ctx.cursor.words[0] !== '') {
+            return false;
+        }
+        if (this.ctx.cursor.words[1] !== '') {
+            return false;
+        }
+        return true;
+    };
+    returnInputTypeKeywords=():boolean=>{
+        if (this.ctx == null) {
+            return false;
+        }
+        if (this.ctx.cursor.words[0] !== '') {
+            return false;
+        }
+        if (this.ctx.cursor.words[1] !== 'type:') {
+            return false;
+        }
+        return true;
+    };
+
 }
 
 export const cloudify = new CloudifyWords();
