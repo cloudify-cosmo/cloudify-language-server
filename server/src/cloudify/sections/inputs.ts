@@ -10,6 +10,11 @@ export const keywords = [
     'required',
     'default'
 ];
+export const inputTypes = [
+    'string',
+    'integer',
+    'boolean'
+];
 
 class InputItem {
     raw;
