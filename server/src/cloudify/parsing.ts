@@ -13,13 +13,12 @@ import {
 } from './utils';
 
 export interface cursor {
-    line:string;
-    lineLength:number;
-    words:string[];
-    word:string;
-    wordLength:number;
     indentation:number;
-}
+    line:string;
+    lines:string[];
+    word:string;
+    words:string[];
+ }
 
 export function getParsed(uri:string) {
     // console.log('Reading ' + uri);
@@ -74,13 +73,11 @@ export function getCursor(textDoc:TextDocumentPositionParams):cursor {
 
     const currentLineSplit:string[] = currentLine.split(/\s+/);
     const currentWord:string = getWordFromIndex(currentLine, textDoc.position.character);
-    console.log(currentLine);
     return {
-        line: currentLine,
-        lineLength: currentLine.length,
-        words:currentLineSplit,
-        word: currentWord,
-        wordLength: currentWord.length,
         indentation: 0,
+        line: currentLine,
+        lines: lines,
+        word: currentWord,
+        words:currentLineSplit,
     } as cursor;
 }

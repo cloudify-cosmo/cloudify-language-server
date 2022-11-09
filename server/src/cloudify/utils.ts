@@ -23,6 +23,7 @@ export function appendCompletionItems(mainList:CompletionItem[], newList:string[
     }
     return mainList;
 }
+
 export interface JSONItems<T> {
     [key: string]: T;
 }

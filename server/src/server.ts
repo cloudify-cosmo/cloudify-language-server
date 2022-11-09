@@ -202,6 +202,7 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
     (item: CompletionItem): CompletionItem => {
+        cloudify.refreshCursor(null);
         // if (item.data === 0) {
         //     item.detail = 'TypeScript details';
         //     item.documentation = 'https://cloudify.co';
