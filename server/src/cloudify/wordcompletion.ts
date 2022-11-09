@@ -9,6 +9,7 @@ import {getCursor} from './parsing';
 import {list as pluginNames} from './sections/plugins';
 import {getNodeTypesForPluginVersion} from './marketplace';
 import {list as nodeTypeKeywords} from './sections/nodeTypes';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords} from './sections/nodeTemplates';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
 import {TimeManager, getCompletionItem, appendCompletionItems} from './utils';
 import {name as inputsKeyword, keywords as inputKeywords, inputTypes} from './sections/inputs';
@@ -44,6 +45,12 @@ class words {
         }
     };
 
+    appendCompletionItems=(keywords:string[], target:CompletionItem[])=>{
+        for (const keyword of keywords) {
+            this.appendCompletionItem(keyword, target);
+        }
+    };
+
 }
 
 class CloudifyWords extends words {
@@ -51,15 +58,17 @@ class CloudifyWords extends words {
     ctx:CloudifyYAML;
     importedPlugins:string[];
     relativeImports:string[];
-    nodeTypeKeywords:CompletionItem[];
     textDoc:TextDocumentPositionParams|null;
+    importedNodeTypeNames:string[];
+    importedNodeTypes:CompletionItem[];
 
     constructor() {
         super();
         this.ctx = new CloudifyYAML();
         this.importedPlugins = [];
         this.relativeImports = [];
-        this.nodeTypeKeywords = [];
+        this.importedNodeTypeNames = [];
+        this.importedNodeTypes = [];
         this.textDoc = null;
     }
 
@@ -105,7 +114,8 @@ class CloudifyWords extends words {
             if (!this.importedPlugins.includes(pluginName)) {
                 const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
                 for (const nodeType of nodeTypes) {
-                    this.appendKeyword(nodeType.type);
+                    this.importedNodeTypeNames.push(nodeType.type);
+                    this.appendCompletionItem(nodeType.type, this.importedNodeTypes);
                 }
                 this.importedPlugins.push(pluginName);
             }
@@ -123,10 +133,6 @@ class CloudifyWords extends words {
     public contextualizedKeywords(textDoc:TextDocumentPositionParams):CompletionItem[] {
         // We want to suggest keywords based on the current situation.
         this.refreshCursor(textDoc);
-        console.log('CTX Section: ' + this.ctx.section);
-        console.log('DSL Version: ' + this.ctx.dslVersion);
-        console.log('Cursor: ');
-        console.log(this.ctx.cursor);
     
         const currentKeywordOptions:CompletionItem[] = [];
 
@@ -149,13 +155,24 @@ class CloudifyWords extends words {
     
 
         if (this.isInput()) {
-            if (this.returnInputKeywords()) {
-                appendCompletionItems(currentKeywordOptions, inputKeywords);
+            if (this.isInputKeywords()) {
+                this.appendCompletionItems(inputKeywords, currentKeywordOptions);
                 return currentKeywordOptions;
             }
-            if (this.returnInputTypeKeywords()) {
-                appendCompletionItems(currentKeywordOptions, inputTypes);
+            if (this.isInputTypeKeywords()) {
+                this.appendCompletionItems(inputTypes, currentKeywordOptions);
                 return currentKeywordOptions;
+            }
+        }
+    
+        if (this.isNodeTemplate()) {
+            console.log('Section: ' + this.ctx.section);
+            console.log(this.ctx.cursor);
+            if (this.isNodeTemplateKeywords()) {
+                return this.returnNodeTemplateKeywords(currentKeywordOptions);
+            }
+            if (this.isNodeTemplateTypeKeywords()) {
+                return this.returnNodeTemplateTypes(currentKeywordOptions);
             }
         }
 
@@ -163,7 +180,7 @@ class CloudifyWords extends words {
     }
 
     returnTopLevel=(list:CompletionItem[])=>{
-        appendCompletionItems(list, cloudifyTopLevelKeywords);
+        this.appendCompletionItems(cloudifyTopLevelKeywords, list);
         return list;
     };
 
@@ -175,7 +192,7 @@ class CloudifyWords extends words {
     };
 
     returnTosca=(list:CompletionItem[])=>{
-        appendCompletionItems(list, toscaDefinitionsVersionKeywords);
+        this.appendCompletionItems(toscaDefinitionsVersionKeywords, list);
         return list;
     };
 
@@ -194,15 +211,14 @@ class CloudifyWords extends words {
     };
 
     returnImports=(list:CompletionItem[], uri:string)=>{
-        appendCompletionItems(list, importKeywords);
+        this.appendCompletionItems(importKeywords, list);
         const importableYamls:string[] = getImportableYamls(uri);
-        appendCompletionItems(list, importableYamls);
-        appendCompletionItems(list, this.relativeImports);
+        this.appendCompletionItems(importableYamls, list);
         return list;
     };
 
     returnPluginImports=(list:CompletionItem[])=>{
-        appendCompletionItems(list, pluginNames);
+        this.appendCompletionItems(pluginNames, list);
         return list;
     };
 
@@ -213,7 +229,7 @@ class CloudifyWords extends words {
         return true;
     };
 
-    returnInputKeywords=():boolean=>{
+    isInputKeywords=():boolean=>{
         if (this.ctx.cursor.words[0] !== '') {
             return false;
         }
@@ -223,7 +239,7 @@ class CloudifyWords extends words {
         return true;
     };
 
-    returnInputTypeKeywords=():boolean=>{
+    isInputTypeKeywords=():boolean=>{
         if (this.ctx.cursor.words[0] !== '') {
             return false;
         }
@@ -231,6 +247,45 @@ class CloudifyWords extends words {
             return false;
         }
         return true;
+    };
+
+    isNodeTemplate=():boolean=>{
+        console.log(this.ctx.cursor);
+        if (this.ctx.section === nodeTemplateName) {
+            return true;
+        } 
+        return false;
+    };
+
+    isNodeTemplateKeywords=():boolean=>{
+        if (this.ctx.cursor.words[0] !== '') {
+            return false;
+        }
+        if (this.ctx.cursor.words[1] !== '') {
+            return false;
+        }
+        return true;
+    };
+
+    isNodeTemplateTypeKeywords=():boolean=>{
+        if (this.ctx.cursor.words[0] !== '') {
+            return false;
+        }
+        if (this.ctx.cursor.words[1] !== 'type:') {
+            return false;
+        }
+        return true;
+    };
+
+    returnNodeTemplateKeywords=(list:CompletionItem[])=>{
+        this.appendCompletionItems(nodeTemplateKeywords, list);
+        return list;
+    };
+
+    returnNodeTemplateTypes=(list:CompletionItem[])=>{
+        this.appendCompletionItems(nodeTypeKeywords, list);
+        this.appendCompletionItems(this.importedNodeTypeNames, list);
+        return list;
     };
 }
 

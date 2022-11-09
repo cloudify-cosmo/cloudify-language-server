@@ -114,9 +114,6 @@ export class CloudifyYAML {
             const firstKey: string[] = line.split(':');
             const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
             if (cloudifyTopLevelKeywords.includes(candidate)) {
-                console.log('Lines: ' + lines);
-                console.log('Line Number: ' + currentLineNumber);
-                console.log('Candidate: ' + candidate);
                 return candidate;
             }
         }

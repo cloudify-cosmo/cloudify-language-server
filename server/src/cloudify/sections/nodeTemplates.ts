@@ -5,6 +5,12 @@
 
 export const name = 'node_templates';
 
+export const keywords:string[] = [
+    'type',
+    'properties',
+    'relationships',
+];
+
 export class validator {
     name:string;
 
