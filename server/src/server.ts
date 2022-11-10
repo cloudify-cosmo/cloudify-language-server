@@ -77,7 +77,7 @@ connection.onInitialized(() => {
     }
     if (hasWorkspaceFolderCapability) {
         connection.workspace.onDidChangeWorkspaceFolders(_event => {
-            connection.console.log('Workspace folder change event received.');
+            connection.console.log('Workspace folder change event received: ' + _event);
         });
     }
 });
@@ -139,11 +139,7 @@ documents.onDidChangeContent(change => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
-
-    await cloudify.init(textDocument.uri);
-    if (cloudify.ctx != null) {
-        cloudify.ctx.refresh();
-    }
+    await cloudify.refresh(textDocument.uri);
 
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
@@ -152,6 +148,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
     let problems = 0;
     const diagnostics: Diagnostic[] = [];
+    // connection.console.log('All Caps Alert ' + pattern.exec(text));
     while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
         problems++;
         const diagnostic: Diagnostic = {
@@ -190,18 +187,13 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
 connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
-    connection.console.log('We received an file change event');
+    connection.console.log('We received an file change event: ' + _change);
 });
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
     (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-        // The pass parameter contains the position of the text document in
-        // which code complete got requested. For the example we ignore this
-        // info and always provide the same completion items.
-        connection.console.log('This: ' + _textDocumentPosition.position);
-
-        return cloudify.keywords;
+        return cloudify.contextualizedKeywords(_textDocumentPosition);
     }
 );
 
@@ -209,6 +201,7 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
     (item: CompletionItem): CompletionItem => {
+        cloudify.refreshCursor(null);
         // if (item.data === 0) {
         //     item.detail = 'TypeScript details';
         //     item.documentation = 'https://cloudify.co';
@@ -218,6 +211,7 @@ connection.onCompletionResolve(
         // }
         // connection.console.log('Detail: ' + 'https://cloudify.co');
         // return item;
+        // connection.console.log('onCompletionResolve: ' + item.label);
         return item;
     }
 );

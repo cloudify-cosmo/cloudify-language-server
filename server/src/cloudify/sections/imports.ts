@@ -100,7 +100,7 @@ class ItemValidator {
         if (this.isString()) {
             return this.importItem as string;
         } else {
-            console.error('Unable to return item as string.');
+            // console.error('Unable to return item as string.');
             return '';
         }
     };
@@ -136,7 +136,7 @@ export class Validator {
             const imported = new ItemValidator(this.dslVersion, rawImported);
             this.imports.push(imported);
         }
-        console.log('imports: ' + this.imports);
+        // console.log('imports: ' + this.imports);
     };
 
     assignPlugins=()=>{
@@ -145,7 +145,7 @@ export class Validator {
                 this.plugins.push(imported.pluginName);
             }
         }
-        console.log('plugins ' + this.plugins);
+        // console.log('plugins ' + this.plugins);
     };
 }
 
