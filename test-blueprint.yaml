@@ -1,0 +1,10 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+inputs:
+
+  username:
+    type: string
+
+  password:
+    type: string
+    default: { get_input:  }
