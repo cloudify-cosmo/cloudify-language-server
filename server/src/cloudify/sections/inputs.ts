@@ -16,7 +16,7 @@ export const inputTypes = [
     'boolean'
 ];
 
-class InputItem {
+export class InputItem {
     raw;
     name:string;
     type:string;
@@ -58,7 +58,7 @@ class InputItem {
     };
 }
 
-interface InputItems<T> {
+export interface InputItems<T> {
     [key: string]: T;
 }
 

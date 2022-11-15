@@ -8,11 +8,12 @@ import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/
 import {getCursor} from './parsing';
 import {list as pluginNames} from './sections/plugins';
 import {getNodeTypesForPluginVersion} from './marketplace';
+import {keywords as intrinsicFunctionKeywords} from './sections/intrinsicfunctions';
 import {list as nodeTypeKeywords} from './sections/nodeTypes';
 import {name as nodeTemplateName, keywords as nodeTemplateKeywords} from './sections/nodeTemplates';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
-import {TimeManager, getCompletionItem, appendCompletionItems} from './utils';
-import {name as inputsKeyword, keywords as inputKeywords, inputTypes} from './sections/inputs';
+import {TimeManager, getCompletionItem} from './utils';
+import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords} from './sections/imports';
 import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/toscaDefinitionsVersion';
 
@@ -21,7 +22,7 @@ class words {
     keywords: CompletionItem[];
 
     constructor() {
-        this.timer = new TimeManager(0.5);
+        this.timer = new TimeManager(0.1);
         this.keywords = [];
     }
 
@@ -56,20 +57,22 @@ class words {
 class CloudifyWords extends words {
 
     ctx:CloudifyYAML;
-    importedPlugins:string[];
-    relativeImports:string[];
     textDoc:TextDocumentPositionParams|null;
+    relativeImports:string[];
+    importedPlugins:string[];
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
+    inputs:InputItems<InputItem>;
 
     constructor() {
         super();
         this.ctx = new CloudifyYAML();
+        this.textDoc = null;
         this.importedPlugins = [];
         this.relativeImports = [];
         this.importedNodeTypeNames = [];
         this.importedNodeTypes = [];
-        this.textDoc = null;
+        this.inputs = {};
     }
 
     public async refresh(uri:string) {
@@ -79,6 +82,7 @@ class CloudifyWords extends words {
         if (this.timer.isReady()) {
             this.ctx.refresh();
             await this.importPlugins();
+            this.inputs = this.ctx.getInputs().contents;
         }
     }
 
@@ -152,7 +156,15 @@ class CloudifyWords extends words {
             }
             return this.returnImports(currentKeywordOptions, textDoc.textDocument.uri);
         }
-    
+
+        if (this.isIntrinsicFunction()) {
+            this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
+            return currentKeywordOptions;
+        }
+
+        if (this.isInputIntrinsicFunction()) {
+            return this.returnInputNames(currentKeywordOptions);
+        }
 
         if (this.isInput()) {
             if (this.isInputKeywords()) {
@@ -249,6 +261,28 @@ class CloudifyWords extends words {
         return true;
     };
 
+    isIntrinsicFunction=():boolean=>{
+        if ((this.ctx.cursor.words.includes('{')) && (this.ctx. cursor.words.includes('}'))) {
+            if ((this.ctx.cursor.words.indexOf('}') - this.ctx.cursor.words.indexOf('{')) >= 1) {
+                return true;
+            }
+        }
+        if (this.ctx.cursor.word.includes('{}')) {
+            return true;
+        }
+        return false;
+    };
+
+    isInputIntrinsicFunction=():boolean=>{
+        if (this.ctx.cursor.words.includes('{get_input:')) {
+            return true;
+        }
+        if (this.ctx.cursor.words.includes('get_input:')) {
+            return true;
+        }
+        return false;
+    };
+
     isNodeTemplate=():boolean=>{
         console.log(this.ctx.cursor);
         if (this.ctx.section === nodeTemplateName) {
@@ -285,6 +319,14 @@ class CloudifyWords extends words {
     returnNodeTemplateTypes=(list:CompletionItem[])=>{
         this.appendCompletionItems(nodeTypeKeywords, list);
         this.appendCompletionItems(this.importedNodeTypeNames, list);
+        return list;
+    };
+
+    returnInputNames=(list:CompletionItem[])=>{
+        for (const inputName of Object.keys(this.inputs)) {
+            console.log(inputName);
+            this.appendCompletionItem(inputName, list);
+        }
         return list;
     };
 }
