@@ -23,7 +23,6 @@ import {
     cloudify,
 } from './cloudify/wordcompletion';
 
-
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
@@ -139,6 +138,7 @@ documents.onDidChangeContent(change => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
+
     await cloudify.refresh(textDocument.uri);
 
     // The validator creates diagnostics for all uppercase words length 2 and more

@@ -22,7 +22,7 @@ class words {
     keywords: CompletionItem[];
 
     constructor() {
-        this.timer = new TimeManager(0.1);
+        this.timer = new TimeManager(0.05);
         this.keywords = [];
     }
 
@@ -131,6 +131,8 @@ class CloudifyWords extends words {
             this.textDoc = textDoc;
             this.ctx.cursor = getCursor(textDoc);
             this.ctx.setDSLSection(textDoc.position.line);
+        } else {
+            this.ctx.setDSLSection(this.ctx.cursor.lineNumber);
         }
     };
 
@@ -187,7 +189,7 @@ class CloudifyWords extends words {
                 return this.returnNodeTemplateTypes(currentKeywordOptions);
             }
         }
-
+        this.refreshCursor(textDoc);
         return this.returnTopLevel(currentKeywordOptions);
     }
 

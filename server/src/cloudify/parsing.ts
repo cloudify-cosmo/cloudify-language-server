@@ -15,6 +15,7 @@ import {
 export interface cursor {
     indentation:number;
     line:string;
+    lineNumber:number;
     lines:string[];
     word:string;
     words:string[];
@@ -77,6 +78,7 @@ export function getCursor(textDoc:TextDocumentPositionParams):cursor {
         indentation: 0,
         line: currentLine,
         lines: lines,
+        lineNumber: textDoc.position.line,
         word: currentWord,
         words:currentLineSplit,
     } as cursor;

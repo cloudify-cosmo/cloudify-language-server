@@ -47,7 +47,14 @@ export class CloudifyYAML {
     constructor() {
         this.parsed = {};
         this.lines = [];
-        this.cursor = {indentation: 0, line: '', lines: [], word: '', words: []} as cursor;
+        this.cursor = {
+            indentation: 0,
+            line: '',
+            lines: [],
+            lineNumber: 0,
+            word: '',
+            words: []
+        } as cursor;
         this.section = null;
         this.dslVersion = ''; // All others may be null, but this must be a string for other fns that use it.
         this.imports = null;
@@ -105,23 +112,43 @@ export class CloudifyYAML {
     };
 
     getDSLSection=(currentLineNumber:number|null)=>{
+
+        let dslSection = cloudifyTopLevelKeywords[0];
+
+        if (typeof this.section === 'string') {
+            dslSection = this.section;
+        }
+
         if (currentLineNumber == null) {
             currentLineNumber = 0;
         }
-        const lines = this.lines.reverse();
-        for (currentLineNumber = 0; currentLineNumber < this.lines.length; currentLineNumber++) {
-            const line = lines[currentLineNumber];
-            const firstKey: string[] = line.split(':');
-            const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
-            if (cloudifyTopLevelKeywords.includes(candidate)) {
-                return candidate;
+
+        const lines:string[] = this.lines;
+        for (let lineNumber = 0; lineNumber <= currentLineNumber; lineNumber++) {
+            const line = lines[lineNumber];
+
+            if (line === undefined) {
+                continue;
+            } else if (line.length < 1) {
+                continue;
             }
+
+            const firstKey:string[] = line.split(':');
+            const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
+
+            if (cloudifyTopLevelKeywords.includes(candidate)) {
+                dslSection = candidate;
+            }
+
         }
-        return null;
+        return dslSection;
     };
 
     setDSLSection=(currentLineNumber:number)=>{
-        this.section = this.getDSLSection(currentLineNumber);
+        const section:string = this.getDSLSection(currentLineNumber);
+        if (section !== undefined) {
+            this.section = section;
+        }
     };
 
 }
