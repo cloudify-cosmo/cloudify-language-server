@@ -6,11 +6,11 @@
 import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
 import {getCursor} from './parsing';
-import {list as pluginNames} from './sections/plugins';
+import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
 import {getNodeTypesForPluginVersion} from './marketplace';
 import {keywords as intrinsicFunctionKeywords} from './sections/intrinsicfunctions';
-import {list as nodeTypeKeywords} from './sections/nodeTypes';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords} from './sections/nodeTemplates';
+import {list as nodeTypeKeywords, NodeTypeItem} from './sections/nodeTypes';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/nodeTemplates';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
 import {TimeManager, getCompletionItem} from './utils';
 import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
@@ -62,6 +62,7 @@ class CloudifyWords extends words {
     importedPlugins:string[];
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
+    importedNodeTypeObjects:NodeTypeItem[];
     inputs:InputItems<InputItem>;
 
     constructor() {
@@ -72,6 +73,7 @@ class CloudifyWords extends words {
         this.relativeImports = [];
         this.importedNodeTypeNames = [];
         this.importedNodeTypes = [];
+        this.importedNodeTypeObjects = [];
         this.inputs = {};
     }
 
@@ -102,6 +104,12 @@ class CloudifyWords extends words {
         }
     }
 
+    public async importPluginOnCompletion(pluginName:string) {
+        if (pluginNameRegex.test(pluginName)) {
+            this._importPlugin(pluginName);
+        }
+    }
+
     private async _importPlugin(pluginName:string) {
 
         if ((pluginName == null) || (!(typeof pluginName === 'string'))) {
@@ -118,6 +126,7 @@ class CloudifyWords extends words {
             if (!this.importedPlugins.includes(pluginName)) {
                 const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
                 for (const nodeType of nodeTypes) {
+                    this.importedNodeTypeObjects.push(nodeType);
                     this.importedNodeTypeNames.push(nodeType.type);
                     this.appendCompletionItem(nodeType.type, this.importedNodeTypes);
                 }
@@ -180,16 +189,19 @@ class CloudifyWords extends words {
         }
     
         if (this.isNodeTemplate()) {
-            console.log('Section: ' + this.ctx.section);
-            console.log(this.ctx.cursor);
             if (this.isNodeTemplateKeywords()) {
+                if (this.isNodeTemplateProperties()) {
+                    return this.isNodeTemplatePropertiesKeywords();
+                }
                 return this.returnNodeTemplateKeywords(currentKeywordOptions);
             }
             if (this.isNodeTemplateTypeKeywords()) {
                 return this.returnNodeTemplateTypes(currentKeywordOptions);
             }
         }
-        this.refreshCursor(textDoc);
+
+        // this.refreshCursor(textDoc);
+
         return this.returnTopLevel(currentKeywordOptions);
     }
 
@@ -286,10 +298,24 @@ class CloudifyWords extends words {
     };
 
     isNodeTemplate=():boolean=>{
-        console.log(this.ctx.cursor);
         if (this.ctx.section === nodeTemplateName) {
             return true;
         } 
+        return false;
+    };
+
+    isNodeTemplateProperties=():boolean=>{
+        const linesLength = this.ctx.cursor.lines.length;
+        if (this.ctx.cursor.lines[linesLength-1].length !== 4) {
+            return false;
+        }
+        const typeLine = this.ctx.cursor.lines[linesLength-2].split(' ');
+        if (typeLine[typeLine.length-2] !== 'type:') {
+            return false;
+        }
+        if (this.importedNodeTypeNames.includes(typeLine[typeLine.length-1])) {
+            return true;
+        }
         return false;
     };
 
@@ -318,6 +344,24 @@ class CloudifyWords extends words {
         return list;
     };
 
+    isNodeTemplatePropertiesKeywords=()=>{
+        const list:CompletionItem[] = [];
+
+        const linesLength = this.ctx.cursor.lines.length;
+        const typeLine = this.ctx.cursor.lines[linesLength-2].split(' ');
+        const nodeTypeName = typeLine[typeLine.length-1];
+
+        console.log(`The nodeTypeName is ${nodeTypeName}`);
+
+        for (const nodeTypeObject of this.importedNodeTypeObjects) {
+            if (nodeTypeObject.type === nodeTypeName) {
+                const properties:string = getPropertiesAsString(nodeTypeObject.properties);
+                this.appendCompletionItem(properties, list);
+            }
+        }
+        return list;
+    };
+
     returnNodeTemplateTypes=(list:CompletionItem[])=>{
         this.appendCompletionItems(nodeTypeKeywords, list);
         this.appendCompletionItems(this.importedNodeTypeNames, list);
@@ -326,7 +370,6 @@ class CloudifyWords extends words {
 
     returnInputNames=(list:CompletionItem[])=>{
         for (const inputName of Object.keys(this.inputs)) {
-            console.log(inputName);
             this.appendCompletionItem(inputName, list);
         }
         return list;

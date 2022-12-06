@@ -5,6 +5,7 @@
 
 export const name = 'plugins';
 export const keywords = [];
+export const regex = /^cloudify-[a-z\\-]*-plugin$/;
 
 export const list = [
     'cloudify-ansible-plugin',

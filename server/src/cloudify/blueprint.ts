@@ -91,7 +91,6 @@ export class CloudifyYAML {
 
     getInputs=()=>{
         const rawInputs = this.getSection('inputs');
-        // console.log('Raw inputs: ' + rawInputs);
         const _inputs = new InputValidator(rawInputs);
         return _inputs;
     };

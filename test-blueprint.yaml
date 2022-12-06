@@ -1,0 +1,8 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - cloudify/types/types.yaml
+  - plugin:cloudify-ansible-plugin
+  - plugin:cloudify-aws-plugin
+
+node_templates:
