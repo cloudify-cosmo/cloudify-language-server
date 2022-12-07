@@ -13,25 +13,51 @@ export const keywords:string[] = [
     'relationships',
 ];
 
+function cleanUpNodeTypeProperty(prop:nodeTypeProperty) {
+    let typeValue = undefined;
+    let defaultValue = undefined;
+    let requiredValue = undefined;
+    let descriptionValue = undefined;
+    if ('type' in prop) {
+        typeValue = prop.type;
+        delete prop.type;
+    }
+    if ('default' in prop) {
+        defaultValue = prop.default;
+        delete prop.default;
+    }
+    if ('required' in prop) {
+        requiredValue = prop.required;
+        delete prop.required;
+    } 
+    if ('description' in prop) {
+        descriptionValue = prop.description;
+        delete prop.description;
+    }
+    return [prop, typeValue, defaultValue, requiredValue, descriptionValue];
+}
+
+
 export function getPropertiesAsString(properties:Record<string, nodeTypeProperty>) {
     const asDict = {'properties': new Map()};
     for (const key in properties) {
-        const value = properties[key];
+        const [
+            cleanedValue,
+            typeValue,
+            defaultValue,
+            requiredValue,
+            descriptionValue] = cleanUpNodeTypeProperty(properties[key]);
 
-        if (value.default !== undefined) {
-            asDict['properties'].set(key, value.default);
-        } else if (value.type == 'dict') {
-            asDict['properties'].set(key, {});
-        } else if (value.type == 'list') {
-            asDict['properties'].set(key, []);
-        } else if (value.type == 'string') {
-            asDict['properties'].set(key, ''); 
-        } else if (value.type == 'integer') {
-            asDict['properties'].set(key, ''); 
-        } else if (value.type == 'boolean') {
-            asDict['properties'].set(key, false); 
+        console.log('We have the following objects: ');
+        console.log(`${key} type is ${typeValue}.`);
+        console.log(`${key} default is ${defaultValue}.`);
+        console.log(`${key} required is ${requiredValue}.`);
+        console.log(`${key} description is ${descriptionValue}.`);
+
+        if (defaultValue !== undefined) {
+            asDict['properties'].set(key, defaultValue);
         } else {
-            asDict['properties'].set(key, 'foo'); 
+            asDict['properties'].set(key, cleanedValue);
         }
     }
 

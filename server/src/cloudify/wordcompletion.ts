@@ -4,6 +4,8 @@
  * ------------------------------------------------------------------------------------------ */
 
 import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
+import {suggestions} from './constants/exampleDefaults';
+import { stringify } from 'yaml';
 
 import {getCursor} from './parsing';
 import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
@@ -355,8 +357,14 @@ class CloudifyWords extends words {
 
         for (const nodeTypeObject of this.importedNodeTypeObjects) {
             if (nodeTypeObject.type === nodeTypeName) {
-                const properties:string = getPropertiesAsString(nodeTypeObject.properties);
-                this.appendCompletionItem(properties, list);
+                const suggested = suggestions.get(nodeTypeName);
+                console.log(suggested);
+                if (suggested !== undefined) {
+                    this.appendCompletionItem(stringify({'properties': suggested}), list);
+                } else {
+                    const properties = getPropertiesAsString(nodeTypeObject.properties);
+                    this.appendCompletionItem(properties, list);    
+                }
             }
         }
         return list;

@@ -18,10 +18,10 @@ export class Validator {
 }
 
 export interface nodeTypeProperty {
-    type: string;
-    description: string;
-    default: object;
-    required: false;
+    type?: string;
+    description?: string;
+    default?: object;
+    required?: false;
 }
 
 export interface NodeTypeItem {
@@ -31,7 +31,7 @@ export interface NodeTypeItem {
     description: string;
     plugin_name: string;
     plugin_version: string;
-    properties: Record<string, nodeTypeProperty>;
+    properties: Record<string, object>;
 }
 
 export const list = [
