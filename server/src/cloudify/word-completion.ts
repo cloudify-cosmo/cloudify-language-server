@@ -3,21 +3,21 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {suggestions} from './constants/exampleDefaults';
 import { stringify } from 'yaml';
+import {nodeTemplates} from './constants/default-node-template-properties';
+import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
 import {getCursor} from './parsing';
-import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
-import {getNodeTypesForPluginVersion} from './marketplace';
-import {keywords as intrinsicFunctionKeywords} from './sections/intrinsicfunctions';
-import {list as nodeTypeKeywords, NodeTypeItem} from './sections/nodeTypes';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/nodeTemplates';
-import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
 import {TimeManager, getCompletionItem} from './utils';
+import {getNodeTypesForPluginVersion} from './marketplace';
+import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
+import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
+import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functions';
+import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
 import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords} from './sections/imports';
-import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/toscaDefinitionsVersion';
+import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
 
 class words {
     timer:TimeManager;
@@ -193,7 +193,7 @@ class CloudifyWords extends words {
         if (this.isNodeTemplate()) {
             if (this.isNodeTemplateKeywords()) {
                 if (this.isNodeTemplateProperties()) {
-                    return this.isNodeTemplatePropertiesKeywords();
+                    return this.returnNodeTemplatePropertiesKeywords();
                 }
                 return this.returnNodeTemplateKeywords(currentKeywordOptions);
             }
@@ -307,11 +307,13 @@ class CloudifyWords extends words {
     };
 
     isNodeTemplateProperties=():boolean=>{
-        const linesLength = this.ctx.cursor.lines.length;
-        if (this.ctx.cursor.lines[linesLength-1].length !== 4) {
+        console.log(this.ctx.cursor);
+        // const linesLength = this.ctx.cursor.lines.length;
+        // const currentLine = this.ctx.cursor.lineNumber;
+        if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber].length !== 4) {
             return false;
         }
-        const typeLine = this.ctx.cursor.lines[linesLength-2].split(' ');
+        const typeLine = this.ctx.cursor.lines[this.ctx.cursor.lineNumber-1].split(' ');
         if (typeLine[typeLine.length-2] !== 'type:') {
             return false;
         }
@@ -346,19 +348,18 @@ class CloudifyWords extends words {
         return list;
     };
 
-    isNodeTemplatePropertiesKeywords=()=>{
+    returnNodeTemplatePropertiesKeywords=()=>{
         const list:CompletionItem[] = [];
 
-        const linesLength = this.ctx.cursor.lines.length;
-        const typeLine = this.ctx.cursor.lines[linesLength-2].split(' ');
+        const linesLength = this.ctx.cursor.lineNumber;
+        const typeLine = this.ctx.cursor.lines[linesLength-1].split(' ');
         const nodeTypeName = typeLine[typeLine.length-1];
 
-        console.log(`The nodeTypeName is ${nodeTypeName}`);
-
+        this.appendCompletionItems(nodeTemplateKeywords, list);
+        // Get the suggested properties for node type.
         for (const nodeTypeObject of this.importedNodeTypeObjects) {
             if (nodeTypeObject.type === nodeTypeName) {
-                const suggested = suggestions.get(nodeTypeName);
-                console.log(suggested);
+                const suggested = nodeTemplates.get(nodeTypeName);
                 if (suggested !== undefined) {
                     this.appendCompletionItem(stringify({'properties': suggested}), list);
                 } else {

@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import { stringify } from 'yaml';
-import {nodeTypeProperty} from './nodeTypes';
+import {nodeTypeProperty} from './node-types';
 export const name = 'node_templates';
 
 export const keywords:string[] = [
@@ -36,7 +36,6 @@ function cleanUpNodeTypeProperty(prop:nodeTypeProperty) {
     }
     return [prop, typeValue, defaultValue, requiredValue, descriptionValue];
 }
-
 
 export function getPropertiesAsString(properties:Record<string, nodeTypeProperty>) {
     const asDict = {'properties': new Map()};

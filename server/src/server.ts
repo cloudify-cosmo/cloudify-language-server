@@ -21,7 +21,7 @@ import {
 
 import {
     cloudify,
-} from './cloudify/wordcompletion';
+} from './cloudify/word-completion';
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);

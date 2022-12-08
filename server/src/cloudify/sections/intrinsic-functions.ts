@@ -4,4 +4,3 @@
  * ------------------------------------------------------------------------------------------ */
 
 export const keywords:string[] = ['get_input:', 'concat:', 'get_property:', 'get_attribute:', 'get_capability', 'get_environment_capability'];
-
