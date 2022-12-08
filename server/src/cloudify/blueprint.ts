@@ -5,15 +5,15 @@
 
 import {JSONItems} from './utils';
 import {cursor, readLines, getParsed} from './parsing';
-import {name as toscaDefinitionsVersionName, Validator as CloudifyToscaDefinitionsVersionValidator} from './sections/toscaDefinitionsVersion';
+import {name as toscaDefinitionsVersionName, Validator as CloudifyToscaDefinitionsVersionValidator} from './sections/tosca-definitions-version';
 import {name as descriptionName} from './sections/description';
 import {name as labelsName} from './sections/labels';
-import {name as blueprintLabelsName} from './sections/blueprintLabels';
+import {name as blueprintLabelsName} from './sections/blueprint-labels';
 import {name as importsKeyword, Validator as ImportsValidator} from './sections/imports';
 import {name as inputsKeyword, Validator as InputValidator} from './sections/inputs';
-import {name as dslDefnitionName} from './sections/dslDefinitions';
-import {name as nodeTypeKeyword, Validator as NodeTypeValidator} from './sections/nodeTypes';
-import {name as nodeTemplatesName} from './sections/nodeTemplates';
+import {name as dslDefnitionName} from './sections/dsl-definitions';
+import {name as nodeTypeKeyword, Validator as NodeTypeValidator} from './sections/node-types';
+import {name as nodeTemplatesName} from './sections/node-templates';
 import {name as relationshipsName} from './sections/relationships';
 import {name as workflowsName} from './sections/workflows';
 import {name as capabilitiesName, alternateName as outputsName} from './sections/capabilities';
@@ -47,7 +47,14 @@ export class CloudifyYAML {
     constructor() {
         this.parsed = {};
         this.lines = [];
-        this.cursor = {indentation: 0, line: '', lines: [], word: '', words: []} as cursor;
+        this.cursor = {
+            indentation: 0,
+            line: '',
+            lines: [],
+            lineNumber: 0,
+            word: '',
+            words: []
+        } as cursor;
         this.section = null;
         this.dslVersion = ''; // All others may be null, but this must be a string for other fns that use it.
         this.imports = null;
@@ -84,7 +91,6 @@ export class CloudifyYAML {
 
     getInputs=()=>{
         const rawInputs = this.getSection('inputs');
-        // console.log('Raw inputs: ' + rawInputs);
         const _inputs = new InputValidator(rawInputs);
         return _inputs;
     };
@@ -105,23 +111,43 @@ export class CloudifyYAML {
     };
 
     getDSLSection=(currentLineNumber:number|null)=>{
+
+        let dslSection = cloudifyTopLevelKeywords[0];
+
+        if (typeof this.section === 'string') {
+            dslSection = this.section;
+        }
+
         if (currentLineNumber == null) {
             currentLineNumber = 0;
         }
-        const lines = this.lines.reverse();
-        for (currentLineNumber = 0; currentLineNumber < this.lines.length; currentLineNumber++) {
-            const line = lines[currentLineNumber];
-            const firstKey: string[] = line.split(':');
-            const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
-            if (cloudifyTopLevelKeywords.includes(candidate)) {
-                return candidate;
+
+        const lines:string[] = this.lines;
+        for (let lineNumber = 0; lineNumber <= currentLineNumber; lineNumber++) {
+            const line = lines[lineNumber];
+
+            if (line === undefined) {
+                continue;
+            } else if (line.length < 1) {
+                continue;
             }
+
+            const firstKey:string[] = line.split(':');
+            const candidate = cloudifyTopLevelKeywords.find(element => element == firstKey[0]) as string;
+
+            if (cloudifyTopLevelKeywords.includes(candidate)) {
+                dslSection = candidate;
+            }
+
         }
-        return null;
+        return dslSection;
     };
 
     setDSLSection=(currentLineNumber:number)=>{
-        this.section = this.getDSLSection(currentLineNumber);
+        const section:string = this.getDSLSection(currentLineNumber);
+        if (section !== undefined) {
+            this.section = section;
+        }
     };
 
 }

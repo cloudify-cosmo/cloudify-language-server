@@ -3,26 +3,28 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
+import { stringify } from 'yaml';
+import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
 import {getCursor} from './parsing';
-import {list as pluginNames} from './sections/plugins';
-import {getNodeTypesForPluginVersion} from './marketplace';
-import {keywords as intrinsicFunctionKeywords} from './sections/intrinsicfunctions';
-import {list as nodeTypeKeywords} from './sections/nodeTypes';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords} from './sections/nodeTemplates';
-import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
 import {TimeManager, getCompletionItem} from './utils';
+import {getNodeTypesForPluginVersion} from './marketplace';
+import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
+import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
+import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functions';
+import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
 import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords} from './sections/imports';
-import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/toscaDefinitionsVersion';
+import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
 
 class words {
     timer:TimeManager;
     keywords: CompletionItem[];
 
     constructor() {
-        this.timer = new TimeManager(0.1);
+        this.timer = new TimeManager(0.05);
         this.keywords = [];
     }
 
@@ -62,6 +64,7 @@ class CloudifyWords extends words {
     importedPlugins:string[];
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
+    importedNodeTypeObjects:NodeTypeItem[];
     inputs:InputItems<InputItem>;
 
     constructor() {
@@ -72,6 +75,7 @@ class CloudifyWords extends words {
         this.relativeImports = [];
         this.importedNodeTypeNames = [];
         this.importedNodeTypes = [];
+        this.importedNodeTypeObjects = [];
         this.inputs = {};
     }
 
@@ -102,6 +106,12 @@ class CloudifyWords extends words {
         }
     }
 
+    public async importPluginOnCompletion(pluginName:string) {
+        if (pluginNameRegex.test(pluginName)) {
+            this._importPlugin(pluginName);
+        }
+    }
+
     private async _importPlugin(pluginName:string) {
 
         if ((pluginName == null) || (!(typeof pluginName === 'string'))) {
@@ -118,6 +128,7 @@ class CloudifyWords extends words {
             if (!this.importedPlugins.includes(pluginName)) {
                 const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
                 for (const nodeType of nodeTypes) {
+                    this.importedNodeTypeObjects.push(nodeType);
                     this.importedNodeTypeNames.push(nodeType.type);
                     this.appendCompletionItem(nodeType.type, this.importedNodeTypes);
                 }
@@ -131,6 +142,8 @@ class CloudifyWords extends words {
             this.textDoc = textDoc;
             this.ctx.cursor = getCursor(textDoc);
             this.ctx.setDSLSection(textDoc.position.line);
+        } else {
+            this.ctx.setDSLSection(this.ctx.cursor.lineNumber);
         }
     };
 
@@ -178,15 +191,18 @@ class CloudifyWords extends words {
         }
     
         if (this.isNodeTemplate()) {
-            console.log('Section: ' + this.ctx.section);
-            console.log(this.ctx.cursor);
             if (this.isNodeTemplateKeywords()) {
+                if (this.isNodeTemplateProperties()) {
+                    return this.returnNodeTemplatePropertiesKeywords();
+                }
                 return this.returnNodeTemplateKeywords(currentKeywordOptions);
             }
             if (this.isNodeTemplateTypeKeywords()) {
                 return this.returnNodeTemplateTypes(currentKeywordOptions);
             }
         }
+
+        // this.refreshCursor(textDoc);
 
         return this.returnTopLevel(currentKeywordOptions);
     }
@@ -284,10 +300,26 @@ class CloudifyWords extends words {
     };
 
     isNodeTemplate=():boolean=>{
-        console.log(this.ctx.cursor);
         if (this.ctx.section === nodeTemplateName) {
             return true;
         } 
+        return false;
+    };
+
+    isNodeTemplateProperties=():boolean=>{
+        console.log(this.ctx.cursor);
+        // const linesLength = this.ctx.cursor.lines.length;
+        // const currentLine = this.ctx.cursor.lineNumber;
+        if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber].length !== 4) {
+            return false;
+        }
+        const typeLine = this.ctx.cursor.lines[this.ctx.cursor.lineNumber-1].split(' ');
+        if (typeLine[typeLine.length-2] !== 'type:') {
+            return false;
+        }
+        if (this.importedNodeTypeNames.includes(typeLine[typeLine.length-1])) {
+            return true;
+        }
         return false;
     };
 
@@ -316,6 +348,29 @@ class CloudifyWords extends words {
         return list;
     };
 
+    returnNodeTemplatePropertiesKeywords=()=>{
+        const list:CompletionItem[] = [];
+
+        const linesLength = this.ctx.cursor.lineNumber;
+        const typeLine = this.ctx.cursor.lines[linesLength-1].split(' ');
+        const nodeTypeName = typeLine[typeLine.length-1];
+
+        this.appendCompletionItems(nodeTemplateKeywords, list);
+        // Get the suggested properties for node type.
+        for (const nodeTypeObject of this.importedNodeTypeObjects) {
+            if (nodeTypeObject.type === nodeTypeName) {
+                const suggested = nodeTemplates.get(nodeTypeName);
+                if (suggested !== undefined) {
+                    this.appendCompletionItem(stringify({'properties': suggested}), list);
+                } else {
+                    const properties = getPropertiesAsString(nodeTypeObject.properties);
+                    this.appendCompletionItem(properties, list);    
+                }
+            }
+        }
+        return list;
+    };
+
     returnNodeTemplateTypes=(list:CompletionItem[])=>{
         this.appendCompletionItems(nodeTypeKeywords, list);
         this.appendCompletionItems(this.importedNodeTypeNames, list);
@@ -324,7 +379,6 @@ class CloudifyWords extends words {
 
     returnInputNames=(list:CompletionItem[])=>{
         for (const inputName of Object.keys(this.inputs)) {
-            console.log(inputName);
             this.appendCompletionItem(inputName, list);
         }
         return list;

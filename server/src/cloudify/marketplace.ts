@@ -8,7 +8,7 @@ import {
 } from './rest';
 import {
     NodeTypeItem,
-} from './sections/nodeTypes';
+} from './sections/node-types';
 
 
 // For casting the response of each item in https://marketplace.cloudify.co/plugins/[pluginName]/versions.
