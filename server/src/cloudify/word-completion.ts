@@ -3,9 +3,9 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { stringify } from 'yaml';
+import {stringify} from 'yaml';
 import {nodeTemplates} from './constants/default-node-template-properties';
-import {CompletionItem, TextDocumentPositionParams} from 'vscode-languageserver/node';
+import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
 import {getCursor} from './parsing';
 import {TimeManager, getCompletionItem} from './utils';
@@ -14,10 +14,12 @@ import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
 import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
 import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functions';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelKeywords} from './blueprint';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
-import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords} from './sections/imports';
+import {name as inputsKeyword, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
 import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { cfyLint } from './cfy-lint';
 
 class words {
     timer:TimeManager;
@@ -66,6 +68,7 @@ class CloudifyWords extends words {
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
     inputs:InputItems<InputItem>;
+    diagnostics:Diagnostic[];
 
     constructor() {
         super();
@@ -77,17 +80,18 @@ class CloudifyWords extends words {
         this.importedNodeTypes = [];
         this.importedNodeTypeObjects = [];
         this.inputs = {};
+        this.diagnostics = [];
     }
 
-    public async refresh(uri:string) {
+    public async refresh(textDocument:TextDocument) {
         if (this.ctx.dslVersion === '') {
-            this.ctx = new BlueprintContext(uri);
+            this.ctx = new BlueprintContext(textDocument.uri);
         }
         if (this.timer.isReady()) {
             this.ctx.refresh();
             await this.importPlugins();
             this.inputs = this.ctx.getInputs().contents;
-        }
+            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});}
     }
 
     addRelativeImports=(documentUri:string, target:CompletionItem[])=>{
@@ -307,9 +311,6 @@ class CloudifyWords extends words {
     };
 
     isNodeTemplateProperties=():boolean=>{
-        console.log(this.ctx.cursor);
-        // const linesLength = this.ctx.cursor.lines.length;
-        // const currentLine = this.ctx.cursor.lineNumber;
         if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber].length !== 4) {
             return false;
         }
