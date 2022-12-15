@@ -3,25 +3,20 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 import {
-    createConnection,
     TextDocuments,
-    Diagnostic,
-    DiagnosticSeverity,
-    ProposedFeatures,
-    InitializeParams,
-    DidChangeConfigurationNotification,
     CompletionItem,
-    TextDocumentPositionParams,
+    createConnection,
+    InitializeParams,
+    InitializeResult,
+    ProposedFeatures,
     TextDocumentSyncKind,
-    InitializeResult
+    TextDocumentPositionParams,
+    DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
-import {
-    TextDocument
-} from 'vscode-languageserver-textdocument';
-
-import {
-    cloudify,
-} from './cloudify/word-completion';
+import {commandName} from './cloudify/cfy-lint';
+import {cloudify} from './cloudify/word-completion';
+import {sync as commandExistsSync} from 'command-exists';
+import {TextDocument} from 'vscode-languageserver-textdocument';
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -35,6 +30,10 @@ const connection = createConnection(ProposedFeatures.all);
 
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
+    if (!commandExistsSync(commandName)) {
+        console.log('The command ' + commandName + ' is not installed in PATH. ' +
+        'Ensure that VSCode Python environment has this command available in PATH.');
+    }
 
     // Does the client support the `workspace/configuration` request?
     // If not, we fall back using global settings.
@@ -74,6 +73,7 @@ connection.onInitialized(() => {
         // Register for all configuration changes.
         connection.client.register(DidChangeConfigurationNotification.type, undefined);
     }
+    
     if (hasWorkspaceFolderCapability) {
         connection.workspace.onDidChangeWorkspaceFolders(_event => {
             connection.console.log('Workspace folder change event received: ' + _event);
@@ -101,7 +101,7 @@ connection.onDidChangeConfiguration(change => {
         documentSettings.clear();
     } else {
         globalSettings = <ExampleSettings>(
-            (change.settings.languageServerExample || defaultSettings)
+            (change.settings.cloudifyLanguageServer || defaultSettings)
         );
     }
 
@@ -117,7 +117,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
     if (!result) {
         result = connection.workspace.getConfiguration({
             scopeUri: resource,
-            section: 'languageServerExample'
+            section: 'cloudifyLanguageServer'
         });
         documentSettings.set(resource, result);
     }
@@ -137,50 +137,27 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
-    // const settings = await getDocumentSettings(textDocument.uri);
-    await cloudify.refresh(textDocument.uri);
-    // // The validator creates diagnostics for all uppercase words length 2 and more
-    // const text = textDocument.getText();
-    // const pattern = /\b[A-Z]{2,}\b/g;
-    // let m: RegExpExecArray | null;
-
-    // let problems = 0;
-    // const diagnostics: Diagnostic[] = [];
-    // // connection.console.log('All Caps Alert ' + pattern.exec(text));
-    // while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-    //     problems++;
-    //     const diagnostic: Diagnostic = {
-    //         severity: DiagnosticSeverity.Warning,
-    //         range: {
-    //             start: textDocument.positionAt(m.index),
-    //             end: textDocument.positionAt(m.index + m[0].length)
-    //         },
-    //         message: `${m[0]} is all uppercase.`,
-    //         source: 'ex'
-    //     };
-    //     if (hasDiagnosticRelatedInformationCapability) {
-    //         diagnostic.relatedInformation = [
-    //             {
-    //                 location: {
-    //                     uri: textDocument.uri,
-    //                     range: Object.assign({}, diagnostic.range)
-    //                 },
-    //                 message: 'Spelling matters'
-    //             },
-    //             {
-    //                 location: {
-    //                     uri: textDocument.uri,
-    //                     range: Object.assign({}, diagnostic.range)
-    //                 },
-    //                 message: 'Particularly for names'
-    //             }
-    //         ];
-    //     }
-    //     diagnostics.push(diagnostic);
-    // }
-
-    // // Send the computed diagnostics to VSCode.
-    // connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    const settings = await getDocumentSettings(textDocument.uri);
+    await cloudify.refresh(textDocument);
+    const diagnostics = cloudify.diagnostics;
+    let problems = 0;
+    while (problems < settings.maxNumberOfProblems) {
+        problems++;
+        for (const diagnostic of diagnostics) {
+            if (hasDiagnosticRelatedInformationCapability) {
+                diagnostic.relatedInformation = [
+                    {
+                        location: {
+                            uri: textDocument.uri,
+                            range: Object.assign({}, diagnostic.range)
+                        },
+                        message: diagnostic.message
+                    }
+                ];
+            } 
+        }
+    }
+    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
 connection.onDidChangeWatchedFiles(_change => {

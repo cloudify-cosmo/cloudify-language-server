@@ -5,15 +5,18 @@
 
 export const name = 'inputs';
 export const keywords = [
-    'type',
+    'default',
     'description',
+    'display_label',
     'required',
-    'default'
+    'type',
 ];
 export const inputTypes = [
     'string',
     'integer',
-    'boolean'
+    'boolean',
+    'dict',
+    'list'
 ];
 
 export class InputItem {
