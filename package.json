@@ -1,5 +1,5 @@
 {
-	"name": "lsp-sample",
+	"name": "cloudify-lsp",
 	"description": "A Cloudify Language Server",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
@@ -48,7 +48,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
+		"build": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
