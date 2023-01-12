@@ -14,30 +14,36 @@ commands:
           name: Update Apt and Install dependencies
           command: sudo apt-get update && sudo apt-get install -y libnss3 libnss3-dev libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm-dev libgtk-3-0 libgbm-dev libasound2 xvfb
 
-  predeploy_commands:
-    steps:
-      - run:
-          name: Run npm production dependencies security audit
-          command: npm run audit --workspaces --if-present
-      - run:
-          name: Package for vsce
-          command: vsce package --pre-release
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - .
+  # vscode_publish:
+  #   steps:
+  #     - run:
+  #         name: Run npm production dependencies security audit
+  #         command: npm run audit --workspaces --if-present
+  #     - run:
+  #         name: sign in
+  #         command: 
+  #     - run:
+  #         name: Package for vsce
+  #         command: vsce package
+  #     - run:
+  #         name: Publish for vsce
+  #         command: vsce package
+  #     - persist_to_workspace:
+  #         root: ~/project
+  #         paths:
+  #           - .
 
-  deploy_commands:
-    steps:
-      - run:
-          name: Authenticate with registry
-          command: |
-            echo '//registry.npmjs.org/:_authToken=${env.NPM_TOKEN}' > .npmrc
-      - run:
-          name: Publish package
-          command: |
-            export PACKAGE_NAME=`echo ${BRANCH} | cut -d "_" -f 2`
-            npm publish --workspace packages/${PACKAGE_NAME}
+  # deploy_commands:
+  #   steps:
+  #     - run:
+  #         name: Authenticate with registry
+  #         command: |
+  #           echo '//registry.npmjs.org/:_authToken=${env.NPM_TOKEN}' > .npmrc
+  #     - run:
+  #         name: Publish package
+  #         command: |
+  #           export PACKAGE_NAME=`echo ${BRANCH} | cut -d "_" -f 2`
+  #           npm publish --workspace packages/${PACKAGE_NAME}
 
   unittests_commands:
     steps:

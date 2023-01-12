@@ -2,7 +2,7 @@
 	"name": "cloudify-lsp",
 	"description": "A Cloudify Language Server",
 	"author": "Cloudify Platform LTD",
-	"license": "MIT",
+	"license": "LICENSE",
 	"version": "0.0.1",
 	"pricing": "Free",
 	"repository": {
@@ -49,7 +49,11 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
+		"vscode:prepublish": "npm run esbuild-base -- --minify",
+		"esbuild-base": "esbuild ./client/src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+		"esbuild": "npm run esbuild-base -- --sourcemap",
+		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+		"test-compile": "tsc -p ./",
 		"build": "tsc -b",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
@@ -60,6 +64,7 @@
 	"devDependencies": {
 		"@typescript-eslint/eslint-plugin": "^5.42.0",
 		"@typescript-eslint/parser": "^5.42.0",
+		"esbuild": "^0.16.17",
 		"eslint": "^8.26.0",
 		"typescript": "^4.8.4"
 	},
