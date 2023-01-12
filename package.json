@@ -1,17 +1,19 @@
 {
 	"name": "cloudify-lsp",
 	"description": "A Cloudify Language Server",
-	"author": "Microsoft Corporation",
+	"author": "Cloudify Platform LTD",
 	"license": "MIT",
-	"version": "1.0.0",
+	"version": "0.0.1",
+	"pricing": "Free",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-extension-samples"
+		"url": "https://github.com/cloudify-cosmo/cloudify-language-server"
 	},
-	"publisher": "vscode-samples",
+	"publisher": "cloudify-language-server",
 	"categories": [],
 	"keywords": [
-		"multi-root ready"
+		"cloudify",
+		"devops"
 	],
 	"engines": {
 		"vscode": "^1.63.0"
@@ -24,7 +26,7 @@
 	"contributes": {
 		"configuration": {
 			"type": "object",
-			"title": "Example configuration",
+			"title": "Cloudify LSP Configuration",
 			"properties": {
 				"cloudifyLanguageServer.maxNumberOfProblems": {
 					"scope": "resource",
@@ -49,24 +51,16 @@
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"build": "tsc -b",
+		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
 		"test": "sh ./scripts/e2e.sh"
 	},
 	"devDependencies": {
-		"@types/command-exists": "^1.2.0",
-		"@types/mocha": "^9.1.0",
-		"@types/node": "^16.11.7",
-		"@types/node-fetch": "^2.6.2",
 		"@typescript-eslint/eslint-plugin": "^5.42.0",
 		"@typescript-eslint/parser": "^5.42.0",
 		"eslint": "^8.26.0",
-		"eslint-config-standard-with-typescript": "^23.0.0",
-		"eslint-plugin-import": "^2.26.0",
-		"eslint-plugin-n": "^15.4.0",
-		"eslint-plugin-promise": "^6.1.1",
-		"mocha": "^9.2.1",
 		"typescript": "^4.8.4"
 	},
 	"dependencies": {

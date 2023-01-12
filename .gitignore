@@ -4,3 +4,4 @@ client/node_modules/*
 client/server
 server/node_modules/*
 .vscode-test
+.venv
