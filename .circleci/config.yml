@@ -1,0 +1,115 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.0.2
+
+commands:
+
+  common:
+    steps:
+      - checkout
+      - node/install-packages:
+        pkg-manager: npm
+      - run:
+          name: Update Apt and Install dependencies
+          command: sudo apt-get update && sudo apt-get install -y libnss3 libnss3-dev libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm-dev libgtk-3-0 libgbm-dev libasound2 xvfb
+
+  # vscode_publish:
+  #   steps:
+  #     - run:
+  #         name: Run npm production dependencies security audit
+  #         command: npm run audit --workspaces --if-present
+  #     - run:
+  #         name: sign in
+  #         command: 
+  #     - run:
+  #         name: Package for vsce
+  #         command: vsce package
+  #     - run:
+  #         name: Publish for vsce
+  #         command: vsce package
+  #     - persist_to_workspace:
+  #         root: ~/project
+  #         paths:
+  #           - .
+
+  # deploy_commands:
+  #   steps:
+  #     - run:
+  #         name: Authenticate with registry
+  #         command: |
+  #           echo '//registry.npmjs.org/:_authToken=${env.NPM_TOKEN}' > .npmrc
+  #     - run:
+  #         name: Publish package
+  #         command: |
+  #           export PACKAGE_NAME=`echo ${BRANCH} | cut -d "_" -f 2`
+  #           npm publish --workspace packages/${PACKAGE_NAME}
+
+  unittests_commands:
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            npm i npm@8
+            npm ci --prefer-offline
+      - run:
+          name: Build packages
+          command: |
+            npm run build --if-present
+      - run:
+          name: Run static analysis and check code style
+          command: |
+            npm run lint --if-present
+      - run:
+          name: Check TypeScript types
+          command: |
+            npm run check-types --if-present
+      - run:
+          name: Run tests with coverage check
+          command: |
+            set -eux
+            /usr/bin/Xvfb :99 -screen 0 1024x768x24 &
+            sleep 1
+            ps aux | grep Xvfb --color=always | grep -v grep
+            # Run command with headless.
+            DISPLAY=:99.0 npm run test --if-present
+      - run:
+          name: Check packing packages
+          command: |
+            npm pack --if-present
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+
+  compile_commands:
+    steps:
+      - run:
+          name: compile
+          command: npm run compile
+      - run:
+          name: install
+          command: npm install
+      - run:
+          name: install
+          command: npm run postinstall
+      - run:
+          name: test
+          command: npm run test
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+
+jobs:
+
+  unittests_job:
+    executor: node/default
+    steps:
+      - common
+      - unittests_commands
+
+workflows:
+  unittests:
+    jobs:
+      - unittests_job
