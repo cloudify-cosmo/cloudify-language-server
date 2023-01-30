@@ -1,9 +1,11 @@
+/* eslint-disable linebreak-style */
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Cloudify Platform LTD. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
 import fetch from 'node-fetch';
+import {Agent} from 'https';
 import {
     JSONItems
 } from './utils';
@@ -22,12 +24,16 @@ interface JSONResponse<T> {
 
 export function rawRequest<ItemType>(url:string, method:string, additionalParams={}): Promise<JSONResponse<ItemType>> {
     // For getting the response from a rest service.
+    const httpsAgent = new Agent({
+        rejectUnauthorized: false,
+    });
     const params = {
         ...additionalParams,
         method: method,
         headers: {
             Accept: 'application/json',
-        }
+        },
+        agent: httpsAgent
     };
     // console.log('Start rawRequest %s %s', url, method);
     const pr = fetch(url, params).then(
