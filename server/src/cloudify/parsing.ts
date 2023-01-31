@@ -1,4 +1,3 @@
-/* eslint-disable linebreak-style */
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Cloudify Platform LTD. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -36,15 +35,9 @@ export function getParsed(uri:string) {
 }
 
 export function readFile (uri:string) {
-    if (uri.startsWith('file://')) {
-        uri = uri.replace('file://', '');
-    } else if (uri.startsWith('file:/')) {
-        uri = uri.replace('file:/', '');
-    }
-
-    uri = path.resolve(uri);
+    const filePrefixRegexp = /^file:\/+/;
+    uri = uri.replace(filePrefixRegexp, '');
     uri = uri.replace('c%3A', '');
-    
     const file = fs.readFileSync(uri, 'utf8');
     return file;
 }
