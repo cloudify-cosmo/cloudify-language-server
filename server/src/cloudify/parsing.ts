@@ -36,13 +36,14 @@ export function getParsed(uri:string) {
 }
 
 export function readFile (uri:string) {
+    uri = path.resolve(uri);
+
     if (uri.startsWith('file://')) {
         uri = uri.replace('file://', '');
     } else if (uri.startsWith('file:/')) {
         uri = uri.replace('file:/', '');
     }
 
-    uri = path.resolve(uri);
     uri = uri.replace('c%3A', '');
     
     const file = fs.readFileSync(uri, 'utf8');

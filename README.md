@@ -5,13 +5,12 @@ Language server for validating and providing hints for writing Cloudify blueprin
 
 ## Requirements:
 
- - Python 3.6, or higher.
- - Install cfy-lint in path for linting in vscode.
+ - VS Code should be configured with a default Python interpreter. https://code.visualstudio.com/docs/python/environments#_working-with-python-interpreters
+ - Install cfy-lint in VS Code's Python environment.
 
- ## How to install cfy-lint
+ ## How to install cfy-lint in VS Code Python environment.
  ```bash
-   git clone https://github.com/cloudify-cosmo/cfy-lint.git
-   pip install -e .\cfy-lint\
+  pip install cfy-lint.
 ```
 
 
