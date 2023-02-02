@@ -1,4 +1,4 @@
-import {promisify} from 'util';
+import {fullPath, promisify} from 'util';
 import {exec} from 'child_process';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
@@ -95,7 +95,7 @@ function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
 
 export async function cfyLint(textDocument:TextDocument) {
     const diagnostics:Diagnostic[] = [];
-    const blueprintPath = textDocument.uri.replace('file://', '');
+    const blueprintPath = fullPath(textDocument.uri);
     if (!commandFlags.includes(blueprintPath)) {commandFlags.push(blueprintPath);}
     const flags = commandFlags.join(' ');
     const result = await cfyLintExecutor(commandName + ' ' + flags);

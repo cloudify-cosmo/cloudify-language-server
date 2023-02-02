@@ -7,6 +7,13 @@ import {
     CompletionItemKind,
 } from 'vscode-languageserver/node';
 
+export function fullPath (uri:string) {
+    const filePrefixRegexp = /^file:\/+/;
+    uri = uri.replace(filePrefixRegexp, '');
+    uri = uri.replace('c%3A', '');
+    return uri;
+}
+
 export function getCompletionItem(newLabel:string, newData:number): CompletionItem {
     return {
         label: newLabel,
