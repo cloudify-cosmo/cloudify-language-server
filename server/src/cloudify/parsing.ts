@@ -37,13 +37,9 @@ export function getParsed(uri:string) {
 
 export function readFile (uri:string) {
     const filePrefixRegexp = /^file:\/+/;
-
     uri = uri.replace(filePrefixRegexp, '');
     uri = uri.replace('c%3A', '');
-  
-    const resolvedUri = path.resolve(uri);
-    const file = fs.readFileSync(resolvedUri, 'utf8');
-    console.log('resolvedUri: '+ resolvedUri);
+    const file = fs.readFileSync(uri, 'utf8');
     return file;
 }
 
