@@ -2,13 +2,14 @@
  * Copyright (c) Cloudify Platform LTD. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
-import * as path from 'path';
+
 import * as fs from 'fs';
 import {
     TextDocumentPositionParams,
 } from 'vscode-languageserver/node';
 import {parse} from 'yaml';
 import {
+    fullPath,
     JSONItems,
 } from './utils';
 
@@ -35,9 +36,7 @@ export function getParsed(uri:string) {
 }
 
 export function readFile (uri:string) {
-    const filePrefixRegexp = /^file:\/+/;
-    uri = uri.replace(filePrefixRegexp, '');
-    uri = uri.replace('c%3A', '');
+    uri = fullPath(uri);
     const file = fs.readFileSync(uri, 'utf8');
     return file;
 }
