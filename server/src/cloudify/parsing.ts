@@ -49,7 +49,7 @@ function getWordFromIndex(line:string, index:number):string {
 
 export function readLines(uri:string): string[] {
     const data:string = readFile(uri).toString();
-    const lines:string[] = data.split('\n');
+    const lines:string[] = data.split(/\r?\n/);
     return lines;
 }
 
