@@ -64,7 +64,7 @@ function assignSeverity(parsed:cfyLintMessage) {
 
 function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
     const text = textDocument.getText();
-    const splitText = text.split('\n');
+    const splitText = text.split(/\r?\n/);
     const line = splitText[parsed.line - 1];
     const cleanedLine = line.trim();
     const pattern = new RegExp(cleanedLine);
