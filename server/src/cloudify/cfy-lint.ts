@@ -1,4 +1,6 @@
-import {fullPath, promisify} from 'util';
+/* eslint-disable linebreak-style */
+import {promisify} from 'util';
+import {fullPath} from './utils';
 import {exec} from 'child_process';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
