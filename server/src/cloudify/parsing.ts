@@ -68,7 +68,6 @@ export function readLine (lines:string[], line:number):string {
 export function getCursor(textDoc:TextDocumentPositionParams):cursor {
     const lines:string[] = readLines(textDoc.textDocument.uri);
     const currentLine:string = readLine(lines, textDoc.position.line);
-
     const currentLineSplit:string[] = currentLine.split(/\s+/);
     const currentWord:string = getWordFromIndex(currentLine, textDoc.position.character);
     return {
