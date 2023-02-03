@@ -4,19 +4,34 @@
  * ------------------------------------------------------------------------------------------ */
 
 import {JSONItems} from './utils';
-import {cursor, readLines, getParsed} from './parsing';
-import {name as toscaDefinitionsVersionName, Validator as CloudifyToscaDefinitionsVersionValidator} from './sections/tosca-definitions-version';
-import {name as descriptionName} from './sections/description';
 import {name as labelsName} from './sections/labels';
-import {name as blueprintLabelsName} from './sections/blueprint-labels';
-import {name as importsKeyword, Validator as ImportsValidator} from './sections/imports';
-import {name as inputsKeyword, Validator as InputValidator} from './sections/inputs';
-import {name as dslDefnitionName} from './sections/dsl-definitions';
-import {name as nodeTypeKeyword, Validator as NodeTypeValidator} from './sections/node-types';
-import {name as nodeTemplatesName} from './sections/node-templates';
-import {name as relationshipsName} from './sections/relationships';
+import {cursor, readLines, getParsed} from './parsing';
 import {name as workflowsName} from './sections/workflows';
-import {name as capabilitiesName, alternateName as outputsName} from './sections/capabilities';
+import {name as descriptionName} from './sections/description';
+import {name as relationshipsName} from './sections/relationships';
+import {name as nodeTemplatesName} from './sections/node-templates';
+import {name as dslDefnitionName} from './sections/dsl-definitions';
+import {name as blueprintLabelsName} from './sections/blueprint-labels';
+import {
+    name as inputsKeyword,
+    Validator as InputValidator
+} from './sections/inputs';
+import {
+    name as importsKeyword,
+    Validator as ImportsValidator
+} from './sections/imports';
+import {
+    name as nodeTypeKeyword,
+    Validator as NodeTypeValidator
+} from './sections/node-types';
+import {
+    name as capabilitiesName,
+    alternateName as outputsName
+} from './sections/capabilities';
+import {
+    name as toscaDefinitionsVersionName,
+    Validator as CloudifyToscaDefinitionsVersionValidator
+} from './sections/tosca-definitions-version';
 
 export const cloudifyTopLevelKeywords = [
     toscaDefinitionsVersionName,

@@ -154,6 +154,8 @@ class CloudifyWords extends words {
     public contextualizedKeywords(textDoc:TextDocumentPositionParams):CompletionItem[] {
         // We want to suggest keywords based on the current situation.
         this.refreshCursor(textDoc);
+        console.log('This is the cursor now: ');
+        console.log(this.ctx.cursor);
     
         const currentKeywordOptions:CompletionItem[] = [];
 
