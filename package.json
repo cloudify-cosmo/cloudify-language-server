@@ -3,7 +3,7 @@
   "description": "A Cloudify Language Server",
   "author": "Cloudify Platform LTD",
   "license": "LICENSE",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "pricing": "Free",
   "repository": {
     "type": "git",
@@ -22,7 +22,7 @@
     "onLanguage:yaml",
     "onLanguage:yml"
   ],
-  "main": "./client/out/extension",
+  "main": "./out/main.js",
   "contributes": {
     "configuration": {
       "type": "object",
@@ -49,22 +49,29 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "node ./scripts/build.js",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-    "test": "sh ./scripts/e2e.sh"
+    "test": "node ./server/out/test/runTest.js"
   },
   "devDependencies": {
     "@types/command-exists": "^1.2.0",
+    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.11.18",
     "@types/node-fetch": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^5.42.0",
     "@typescript-eslint/parser": "^5.42.0",
+    "@vscode/test-electron": "^2.2.3",
     "esbuild": "^0.16.17",
     "eslint": "^8.26.0",
+    "mocha": "^10.2.0",
     "typescript": "^4.8.4"
   },
   "dependencies": {

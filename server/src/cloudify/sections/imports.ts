@@ -12,6 +12,7 @@ export const keywords = [
     'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
     'plugin:'
 ];
+export const pluginRegex = /^\s+-\s?plugin:/;
 
 // TODO: Add find yaml files in subfolders and add them to import options.
 // TODO: Add version constraints prediction.

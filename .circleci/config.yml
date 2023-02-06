@@ -9,7 +9,7 @@ commands:
     steps:
       - checkout
       - node/install-packages:
-        pkg-manager: npm
+          pkg-manager: npm
       - run:
           name: Update Apt and Install dependencies
           command: sudo apt-get update && sudo apt-get install -y libnss3 libnss3-dev libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm-dev libgtk-3-0 libgbm-dev libasound2 xvfb
@@ -72,7 +72,7 @@ commands:
             sleep 1
             ps aux | grep Xvfb --color=always | grep -v grep
             # Run command with headless.
-            DISPLAY=:99.0 npm run test --if-present
+            DISPLAY=:99.0 npm run compile && npm run test --if-present
       - run:
           name: Check packing packages
           command: |
