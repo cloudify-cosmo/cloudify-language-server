@@ -2,6 +2,8 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
+
+// When adding new modules, use "npm install @types/libName"
 import {
     TextDocuments,
     CompletionItem,
@@ -14,7 +16,7 @@ import {
     DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
 import {commandName} from './cloudify/cfy-lint';
-import {cloudify} from './cloudify/word-completion';
+import {cloudify} from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 
@@ -54,7 +56,8 @@ connection.onInitialize((params: InitializeParams) => {
             textDocumentSync: TextDocumentSyncKind.Incremental,
             // Tell the client that this server supports code completion.
             completionProvider: {
-                resolveProvider: true
+                resolveProvider: true,
+                triggerCharacters: [ '- ' ]
             }
         }
     };
@@ -132,7 +135,9 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-    validateTextDocument(change.document);
+    if (cloudify.timer.isReady()) {
+        validateTextDocument(change.document);
+    }
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
@@ -177,21 +182,6 @@ connection.onCompletion(
 connection.onCompletionResolve(
     (item: CompletionItem): CompletionItem => {
         cloudify.importPluginOnCompletion(item.label);
-        // const nodeTypeRegex = /^cloudify\.nodes/;
-        // if (nodeTypeRegex.test(item.label)) {
-        //     console.log('I see you using that mofo!!! ' + item.label);
-        // }
-        // cloudify.refreshCursor(null);
-        // if (item.data === 0) {
-        //     item.detail = 'TypeScript details';
-        //     item.documentation = 'https://cloudify.co';
-        // } else if (item.data === 1) {
-        //     item.detail = 'JavaScript details';
-        //     item.documentation = 'https://cloudify.co';
-        // }
-        // connection.console.log('Detail: ' + 'https://cloudify.co');
-        // return item;
-        // connection.console.log('onCompletionResolve: ' + item.label);
         return item;
     }
 );

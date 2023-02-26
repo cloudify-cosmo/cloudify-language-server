@@ -1,9 +1,13 @@
+/* eslint-disable linebreak-style */
 import {promisify} from 'util';
+import {fullPath} from './utils';
 import {exec} from 'child_process';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
 
 const execPromise = promisify(exec);
+
+const badCfyLint = '\n{"level": "error", "line": 1, "rule": "imports", "message": "Linting unavailable. Please ensure that cfy-lint is installed in the VS Code interpreter (see README)."}\n';
 
 const cfyLintExecutor = async (command: string) => {
     try {
@@ -11,31 +15,31 @@ const cfyLintExecutor = async (command: string) => {
         if (!stdout == null) {
             console.log('Unexpected STDOUT: ' + stdout);
         }
+        console.log(stderr);
         return stderr;
     } catch {
-        // pass
+        return badCfyLint;
     }
-    return '';
 };
 
 export const commandName = 'cfy-lint';
 const commandFlags = ['-f', 'json', '-b'];
 
-interface cfyLintMessage {
+export interface cfyLintMessage {
     level:string;
     line:number;
     rule:string;
     message:string;
 }
 
-function lineIsLint(line:string) {
+export function lineIsLint(line:string) {
     if ((line.startsWith('{')) && (line.endsWith('}'))) {
         return true; 
     }
     return false;
 }
 
-function insertMessages(result:string) {
+export function insertMessages(result:string) {
     const messages = [];
     try {
         const lines = result.toString().split(/\r?\n/);
@@ -52,7 +56,7 @@ function insertMessages(result:string) {
     return messages;
 }
 
-function assignSeverity(parsed:cfyLintMessage) {
+export function assignSeverity(parsed:cfyLintMessage) {
     if (parsed.level === 'warning') {
         return DiagnosticSeverity.Warning;
     } else {
@@ -62,12 +66,12 @@ function assignSeverity(parsed:cfyLintMessage) {
 
 function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
     const text = textDocument.getText();
-    const splitText = text.split('\n');
+    const splitText = text.split(/\r?\n/);
     const line = splitText[parsed.line - 1];
     const cleanedLine = line.trim();
     const pattern = new RegExp(cleanedLine);
     const m = pattern.exec(text);
-    if (m == null) {
+    if ((m == null) || (m === undefined)) {
         return null;
     }
     const diagnostic:Diagnostic = {
@@ -95,7 +99,7 @@ function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
 
 export async function cfyLint(textDocument:TextDocument) {
     const diagnostics:Diagnostic[] = [];
-    const blueprintPath = textDocument.uri.replace('file://', '');
+    const blueprintPath = fullPath(textDocument.uri);
     if (!commandFlags.includes(blueprintPath)) {commandFlags.push(blueprintPath);}
     const flags = commandFlags.join(' ');
     const result = await cfyLintExecutor(commandName + ' ' + flags);

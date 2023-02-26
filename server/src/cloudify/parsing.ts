@@ -4,42 +4,30 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as fs from 'fs';
+import {parse} from 'yaml';
 import {
     TextDocumentPositionParams,
 } from 'vscode-languageserver/node';
-import {parse} from 'yaml';
+
 import {
+    fullPath,
     JSONItems,
+    getIndentation,
 } from './utils';
 
-export interface cursor {
-    indentation:number;
-    line:string;
-    lineNumber:number;
-    lines:string[];
-    word:string;
-    words:string[];
- }
-
 export function getParsed(uri:string) {
-    // console.log('Reading ' + uri);
     let parsed:JSONItems<object|string|[]> = {};
     try {
         const file = readFile(uri);
         parsed = parse(file);    
     } catch {
-        // console.log('Error');
+        // pass
     }
-    // console.log('Read ' + parsed);
     return parsed;
 }
 
 export function readFile (uri:string) {
-    if (uri.startsWith('file://')) {
-        uri = uri.replace('file://', '');
-    } else if (uri.startsWith('file:/')) {
-        uri = uri.replace('file:/', '');
-    }
+    uri = fullPath(uri);
     const file = fs.readFileSync(uri, 'utf8');
     return file;
 }
@@ -52,7 +40,7 @@ function getWordFromIndex(line:string, index:number):string {
 
 export function readLines(uri:string): string[] {
     const data:string = readFile(uri).toString();
-    const lines:string[] = data.split('\n');
+    const lines:string[] = data.split(/\r\n?|\n/);
     return lines;
 }
 
@@ -68,18 +56,67 @@ export function readLine (lines:string[], line:number):string {
     return '';
 }
 
-export function getCursor(textDoc:TextDocumentPositionParams):cursor {
-    const lines:string[] = readLines(textDoc.textDocument.uri);
-    const currentLine:string = readLine(lines, textDoc.position.line);
+export class documentCursor {
+    private raw:TextDocumentPositionParams|null;
+    character:number;
+    lineNumber:number;
+    private _indentation:number;
+    private _line:string;
+    private _lines:string[];
+    private _word:string;
+    private _words:string[];
 
-    const currentLineSplit:string[] = currentLine.split(/\s+/);
-    const currentWord:string = getWordFromIndex(currentLine, textDoc.position.character);
-    return {
-        indentation: 0,
-        line: currentLine,
-        lines: lines,
-        lineNumber: textDoc.position.line,
-        word: currentWord,
-        words:currentLineSplit,
-    } as cursor;
+    constructor(textDoc:TextDocumentPositionParams|null) {
+        this.raw = textDoc;
+        if (this.raw == null) {
+            this.character = 0;
+            this.lineNumber = 0;
+        } else {
+            this.character = this.raw.position.character;
+            this.lineNumber = this.raw.position.line + 1;
+        }
+        this._lines = [];
+        this._line = '';
+        this._indentation = 0;
+        this._word = '';
+        this._words = [];
+    }
+    public get lines() {
+        if (this._lines.length == 0) {
+            if (this.raw == null) {
+                this._lines = [];
+            } else {
+                this._lines = readLines(this.raw.textDocument.uri);
+            }
+        }
+        return this._lines;
+    }
+    public get line() {
+        if (this._line === '') {
+            this._line = readLine(this.lines, this.lineNumber - 1);
+        }
+        return this._line;
+    }
+    public get indentation() {
+        if (this._indentation == 0) {
+            this._indentation = getIndentation(this.line);
+        }
+        return this._indentation;
+    }
+    public get word() {
+        if (this._word === '') {
+            this._word = getWordFromIndex(this.line, this.character);
+        }
+        return this._word;
+    }
+    public get words() {
+        if (this._words.length == 0 ) {
+            this._words = this.line.split(/\s/);
+        }
+        return this._words;
+    }
+    isNewSection=():boolean=>{
+        return (this.indentation == 0);
+    };
+
 }
