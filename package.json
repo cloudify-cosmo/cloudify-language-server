@@ -1,5 +1,5 @@
 {
-  "name": "cloudify-lsp",
+  "name": "cloudify",
   "description": "A Cloudify Language Server",
   "author": "Cloudify Platform LTD",
   "license": "LICENSE",
@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git+https://github.com/cloudify-cosmo/cloudify-language-server.git"
   },
-  "publisher": "cloudify-language-server",
+  "publisher": "cloudifyecosystem",
   "categories": [],
   "keywords": [
     "cloudify",
