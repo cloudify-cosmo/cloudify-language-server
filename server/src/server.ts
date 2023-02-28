@@ -5,6 +5,7 @@
 
 // When adding new modules, use "npm install @types/libName"
 import {
+    CodeAction, CodeActionKind, Command,
     TextDocuments,
     CompletionItem,
     createConnection,
@@ -15,7 +16,7 @@ import {
     TextDocumentPositionParams,
     DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
-import {commandName} from './cloudify/cfy-lint';
+import {commandName as cfyLintCommandName, cfyLintFix} from './cloudify/cfy-lint';
 import {cloudify} from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
@@ -32,8 +33,8 @@ const connection = createConnection(ProposedFeatures.all);
 
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
-    if (!commandExistsSync(commandName)) {
-        console.log('The command ' + commandName + ' is not installed in PATH. ' +
+    if (!commandExistsSync(cfyLintCommandName)) {
+        console.log('The command ' + cfyLintCommandName + ' is not installed in PATH. ' +
         'Ensure that VSCode Python environment has this command available in PATH.');
     }
 
@@ -53,11 +54,15 @@ connection.onInitialize((params: InitializeParams) => {
 
     const result: InitializeResult = {
         capabilities: {
+            codeActionProvider: true,
             textDocumentSync: TextDocumentSyncKind.Incremental,
             // Tell the client that this server supports code completion.
             completionProvider: {
                 resolveProvider: true,
                 triggerCharacters: [ '- ' ]
+            },
+            executeCommandProvider: {
+                commands: [cfyLintCommandName]
             }
         }
     };
@@ -69,6 +74,40 @@ connection.onInitialize((params: InitializeParams) => {
         };
     }
     return result;
+});
+
+connection.onCodeAction((params) => {
+    const textDocument = documents.get(params.textDocument.uri);
+    if (textDocument === undefined) {
+        return undefined;
+    }
+    let parsed = {rule: null};
+    for (const diagnostic of params.context.diagnostics) {
+        if (diagnostic.range.start.line === params.range.start.line) {
+            if (typeof diagnostic.source == 'string') {
+                parsed = JSON.parse(diagnostic.source);
+            }
+        }
+    }
+    return [CodeAction.create(
+        'Fix with Cfy-Lint',
+        Command.create(
+            'Fix with Cfy-Lint',
+            cfyLintCommandName,
+            params.textDocument,
+            `${parsed.rule}=${params.range.start.line + 1}`
+        ),
+        CodeActionKind.QuickFix)
+    ];
+});
+
+connection.onExecuteCommand(async (params) => {
+    if (params.command === cfyLintCommandName) {
+        if (params.arguments !== undefined) {
+            await cfyLintFix(params.arguments[0], params.arguments[1]);
+        }
+    }
+    return;
 });
 
 connection.onInitialized(() => {
