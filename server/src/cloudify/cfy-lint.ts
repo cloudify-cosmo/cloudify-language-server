@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import {fullPath} from './utils';
 import {exec} from 'child_process';
 import {TextDocument} from 'vscode-languageserver-textdocument';
-import {Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
+import {Range, Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
 
 const execPromise = promisify(exec);
 
@@ -15,7 +15,6 @@ const cfyLintExecutor = async (command: string) => {
         if (!stdout == null) {
             console.log('Unexpected STDOUT: ' + stdout);
         }
-        console.log(stderr);
         return stderr;
     } catch {
         return badCfyLint;
@@ -23,7 +22,6 @@ const cfyLintExecutor = async (command: string) => {
 };
 
 export const commandName = 'cfy-lint';
-const commandFlags = ['-f', 'json', '-b'];
 
 export interface cfyLintMessage {
     level:string;
@@ -74,32 +72,35 @@ function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
     if ((m == null) || (m === undefined)) {
         return null;
     }
-    const diagnostic:Diagnostic = {
-        severity: assignSeverity(parsed),
-        message: parsed.message,
-        source: parsed.message,
-        range: {
-            start: textDocument.positionAt(m.index),
-            end: textDocument.positionAt(m.index + m[0].length)
-        },
-    };
+    const range:Range = Range.create(
+        textDocument.positionAt(m.index),
+        textDocument.positionAt(m.index + m[0].length)
+    );
     if (parsed.rule === 'empty-lines') {
         if (parsed.line > 0) {
-            diagnostic.range.start.line = parsed.line - 1;
-            diagnostic.range.end.line = parsed.line - 1;
+            range.start.line = parsed.line - 1;
+            range.end.line = parsed.line - 1;
         } else {
-            diagnostic.range.start.line = parsed.line;
-            diagnostic.range.end.line = parsed.line;
+            range.start.line = parsed.line;
+            range.end.line = parsed.line;
         }
-        diagnostic.range.start.character = 0;
-        diagnostic.range.end.character = 0;
+        range.start.character = 0;
+        range.end.character = 0;
     }
+    const diagnostic:Diagnostic = Diagnostic.create(
+        range,
+        parsed.message,
+        assignSeverity(parsed),
+        0,
+        JSON.stringify(parsed),
+    );
     return diagnostic;
 }
 
 export async function cfyLint(textDocument:TextDocument) {
     const diagnostics:Diagnostic[] = [];
     const blueprintPath = fullPath(textDocument.uri);
+    const commandFlags = ['-f', 'json', '-b'];
     if (!commandFlags.includes(blueprintPath)) {commandFlags.push(blueprintPath);}
     const flags = commandFlags.join(' ');
     const result = await cfyLintExecutor(commandName + ' ' + flags);
@@ -118,4 +119,13 @@ export async function cfyLint(textDocument:TextDocument) {
         }
     }
     return diagnostics;
+}
+
+export async function cfyLintFix(textDocument:TextDocument, fix:string) {
+    const blueprintPath = fullPath(textDocument.uri);
+    const commandFlags = ['-f', 'json', '-b'];
+    if (!commandFlags.includes(blueprintPath)) {commandFlags.push(blueprintPath);}
+    if (!commandFlags.includes(fix)) { commandFlags.push(`--fix ${fix}`);}
+    const flags = commandFlags.join(' ');
+    await cfyLintExecutor(commandName + ' ' + flags);
 }
