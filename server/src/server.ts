@@ -85,7 +85,12 @@ connection.onCodeAction((params) => {
     for (const diagnostic of params.context.diagnostics) {
         if (diagnostic.range.start.line === params.range.start.line) {
             if (typeof diagnostic.source == 'string') {
-                parsed = JSON.parse(diagnostic.source);
+                try {
+                    parsed = JSON.parse(diagnostic.source);
+                } catch (e) {
+                    console.log('Failed to parse JSON, verify current file is YAML.');
+                    return [];
+                }
             }
         }
     }

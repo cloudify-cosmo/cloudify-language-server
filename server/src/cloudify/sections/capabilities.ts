@@ -13,3 +13,7 @@ export class validator {
         this.name = name;
     }
 }
+
+export const documentation = `Expose stored or manipulated data from a deployment.
+
+For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-capabilities/`;

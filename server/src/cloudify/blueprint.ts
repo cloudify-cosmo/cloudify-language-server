@@ -97,14 +97,12 @@ export class CloudifyYAML {
         } else if (typeof rawVersion === 'object') {
             return '';
         }
-        // console.log('Raw version '.concat(rawVersion));
         const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
         return _version.toString();
     };
 
     getImports=()=>{
         const rawImports = this.getSection('imports');
-        // console.log('Raw imports ' + rawImports);
         const _imports = new ImportsValidator(this.dslVersion, rawImports);
         return _imports;
     };
@@ -121,7 +119,6 @@ export class CloudifyYAML {
 
     getNodeTypes=()=>{
         const rawNodeTypes = this.getSection('node_types');
-        // console.log('Raw node_types: ' + rawNodeTypes);
         const _nodeTypes = new NodeTypeValidator(rawNodeTypes);
         return _nodeTypes;
     };

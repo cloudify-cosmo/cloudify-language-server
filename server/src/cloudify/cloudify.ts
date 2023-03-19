@@ -47,6 +47,8 @@ class CloudifyWords extends words {
     public async refresh(textDocument:TextDocument) {
         if (this.ctx.dslVersion === '') {
             this.ctx = new BlueprintContext(textDocument.uri);
+        } else if (this.ctx instanceof BlueprintContext) {
+            this.ctx.refresh();
         }
         if (this.timer.isReady()) {
             await this.importPlugins();
@@ -61,6 +63,7 @@ class CloudifyWords extends words {
     };
 
     public async importPlugins() {
+
         if (this.ctx != null) {
             if (this.ctx.imports != null) {
                 for (const plugin of this.ctx.imports.plugins) {
@@ -77,7 +80,6 @@ class CloudifyWords extends words {
     }
 
     private async _importPlugin(pluginName:string) {
-
         if ((pluginName == null) || (!(typeof pluginName === 'string'))) {
             return '';
         }
@@ -92,9 +94,11 @@ class CloudifyWords extends words {
             if (!this.importedPlugins.includes(pluginName)) {
                 const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
                 for (const nodeType of nodeTypes) {
-                    this.importedNodeTypeObjects.push(nodeType);
-                    this.importedNodeTypeNames.push(nodeType.type);
-                    this.appendCompletionItem(nodeType.type, this.importedNodeTypes);
+                    if (nodeType.type.startsWith('cloudify.nodes.')) {
+                        this.importedNodeTypeObjects.push(nodeType);
+                        this.importedNodeTypeNames.push(nodeType.type);
+                        this.appendCompletionItem(nodeType.type, this.importedNodeTypes);   
+                    }
                 }
                 this.importedPlugins.push(pluginName);
             }
@@ -114,14 +118,11 @@ class CloudifyWords extends words {
     
         const currentKeywordOptions:CompletionItem[] = [];
 
-
+        if (this.isTosca()) {
+            return this.returnTosca(currentKeywordOptions);
+        }
         if (this.isNewSection()) {
             return this.returnTopLevel(currentKeywordOptions);
-        }
-        if (this.isTosca()) {
-            if (this.ctx.dslVersion === '') {
-                return this.returnTosca(currentKeywordOptions);
-            }
         }
         if (this.isImports()) {
             if (this.isPluginImport()) {
@@ -195,7 +196,6 @@ class CloudifyWords extends words {
         const list:CompletionItem[] = [];
         
         const nodeTypeName = getNodeType(this.ctx.cursor);
-        console.log(nodeTypeName);
         this.appendCompletionItems(nodeTemplateKeywords, list);
         // Get the suggested properties for node type.
         for (const nodeTypeObject of this.importedNodeTypeObjects) {

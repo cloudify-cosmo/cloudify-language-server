@@ -12,3 +12,8 @@ export class validator {
         this.name = name;
     }
 }
+
+export const documentation = `Create dependencies between node templates.
+Define operations to be called before and after node resolution.
+
+For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-relationships/`;

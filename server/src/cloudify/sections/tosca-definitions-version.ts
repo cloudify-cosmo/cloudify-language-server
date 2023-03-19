@@ -9,6 +9,13 @@ export const keywords = [
     'cloudify_dsl_1_4',
     'cloudify_dsl_1_5',
 ];
+export const documentation = `A top-level property of a blueprint, which is used to specify the DSL version.
+Currently, supported versions are:
+  - cloudify_dsl_1_3
+  - cloudify_dsl_1_4
+
+For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-versioning/`;
+
 
 export class Validator {
     version:string;

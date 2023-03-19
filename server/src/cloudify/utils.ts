@@ -121,30 +121,30 @@ export function fullPath (uri:string) {
 }
 
 export function getCompletionItem(newLabel:string, newData:number): CompletionItem {
-    // console.log(newLabel);
+    const info = 'For more information, see: ';
     let documentation = '';
     if (newLabel in documentationNames) {
         documentation = documentationNames[newLabel];
     } else if (newLabel.includes('cloudify.nodes.aws')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/aws/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/aws/';
     } else if (newLabel.includes('cloudify.nodes.azure')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/azure/';
-    } else if (newLabel.includes('cloudify.nodes.azure')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/azure/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/azure/';
     } else if (newLabel.includes('cloudify.nodes.gcp')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/gcp/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/gcp/';
     } else if (newLabel.includes('cloudify.nodes.vsphere')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/vsphere/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/infrastructure/vsphere/';
     } else if (newLabel.includes('cloudify.nodes.kubernetes')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/kubernetes/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/kubernetes/';
     } else if (newLabel.includes('cloudify.nodes.helm')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/helm/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/helm/';
     } else if (newLabel.includes('cloudify.nodes.terraform')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/terraform/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/terraform/';
     } else if (newLabel.includes('cloudify.nodes.docker')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/docker/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/docker/';
     } else if (newLabel.includes('cloudify.nodes.ansible')) {
-        documentation = 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/ansible/';
+        documentation = info + 'https://docs.cloudify.co/latest/working_with/official_plugins/orchestration/ansible/';
+    } else {
+        documentation = info + 'https://docs.cloudify.co/';
     }
     return {
         label: newLabel,

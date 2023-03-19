@@ -19,6 +19,10 @@ export const inputTypes = [
     'list'
 ];
 
+export const documentation = `Parameters that are injected into a blueprint when a deployment is created. These parameters can be referenced elsewhere in the blueprint with the get_input intrinsic function.
+
+For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-inputs/`;
+
 export class InputItem {
     raw;
     name:string;
@@ -77,7 +81,6 @@ export class Validator {
         this.raw = raw;
         this.contents = Object();
         this.assign();
-        // console.log('inputs: ' + this.contents);
     }
     assign=()=>{
         const inputs = Object(this.raw);
