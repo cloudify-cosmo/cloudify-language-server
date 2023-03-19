@@ -4,6 +4,10 @@
  * ------------------------------------------------------------------------------------------ */
 
 // When adding new modules, use "npm install @types/libName"
+import {cloudify} from './cloudify/cloudify';
+import {sync as commandExistsSync} from 'command-exists';
+import {TextDocument} from 'vscode-languageserver-textdocument';
+import {commandName as cfyLintCommandName, cfyLintFix} from './cloudify/cfy-lint';
 import {
     CodeAction, CodeActionKind, Command,
     TextDocuments,
@@ -16,16 +20,12 @@ import {
     TextDocumentPositionParams,
     DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
-import {commandName as cfyLintCommandName, cfyLintFix} from './cloudify/cfy-lint';
-import {cloudify} from './cloudify/cloudify';
-import {sync as commandExistsSync} from 'command-exists';
-import {TextDocument} from 'vscode-languageserver-textdocument';
 
 // Create a simple text document manager.
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
+const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -85,7 +85,12 @@ connection.onCodeAction((params) => {
     for (const diagnostic of params.context.diagnostics) {
         if (diagnostic.range.start.line === params.range.start.line) {
             if (typeof diagnostic.source == 'string') {
-                parsed = JSON.parse(diagnostic.source);
+                try {
+                    parsed = JSON.parse(diagnostic.source);
+                } catch (e) {
+                    console.log('Failed to parse JSON, verify current file is YAML.');
+                    return [];
+                }
             }
         }
     }

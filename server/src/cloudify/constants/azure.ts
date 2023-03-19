@@ -115,7 +115,7 @@ export const nodeTemplates = new Map(
                                 'publicKeys': [
                                     {
                                         'keydata': '',
-                                        'path': '/home/cloudifyuser/.ssh/authorized_keys'	
+                                        'path': '/home/cloudifyuser/.ssh/authorized_keys'    
                                     }
                                 ]
                             }

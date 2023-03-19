@@ -9,6 +9,10 @@
  * ------------------------------------------------------------------------------------------ */
 
 export const name = 'node_types';
+export const documentation = `Define the available properties and operations for node-templates.
+Node templates can then be created based on these types, inheriting these definitions.
+
+For more information, see: https://docs.cloudify.co/latest/developer/blueprints/spec-node-types/`;
 
 export class Validator {
     rawItems;

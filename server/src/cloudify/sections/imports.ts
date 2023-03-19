@@ -12,6 +12,11 @@ export const keywords = [
     'https://cloudify.co/spec/cloudify/6.4.0/types.yaml',
     'plugin:'
 ];
+
+export const documentation = `Reference other blueprint files, plugins, types files.
+
+For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-imports/.`;
+
 export const pluginRegex = /^\s+-\s?plugin:/;
 
 // TODO: Add find yaml files in subfolders and add them to import options.
@@ -137,7 +142,6 @@ export class Validator {
             const imported = new ItemValidator(this.dslVersion, rawImported);
             this.imports.push(imported);
         }
-        // console.log('imports: ' + this.imports);
     };
 
     assignPlugins=()=>{
@@ -146,7 +150,6 @@ export class Validator {
                 this.plugins.push(imported.pluginName);
             }
         }
-        // console.log('plugins ' + this.plugins);
     };
 }
 

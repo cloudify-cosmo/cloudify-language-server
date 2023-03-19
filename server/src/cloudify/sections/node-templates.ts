@@ -6,6 +6,10 @@
 import { stringify } from 'yaml';
 import {nodeTypeProperty} from './node-types';
 export const name = 'node_templates';
+export const documentation = `An infrastructure or application component in a blueprint.
+A node template is based on a node type defined in a blueprint or plugin.
+
+For more information, see: https://docs.cloudify.co/latest/developer/blueprints/spec-node-templates/`;
 
 export const keywords:string[] = [
     'type',

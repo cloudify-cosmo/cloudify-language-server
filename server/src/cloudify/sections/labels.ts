@@ -12,3 +12,7 @@ export class validator {
         this.name = name;
     }
 }
+
+export const documentation = `Tag deployments. Label's keys are saved in lowercase.
+
+For more information, see: https://docs.cloudify.co/latest/developer/blueprints/spec-labels/`;
