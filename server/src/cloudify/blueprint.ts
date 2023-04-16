@@ -10,7 +10,10 @@ import {name as workflowsName} from './sections/workflows';
 import {documentCursor, readLines, getParsed} from './parsing';
 import {name as descriptionName} from './sections/description';
 import {name as relationshipsName} from './sections/relationships';
-import {name as nodeTemplatesName} from './sections/node-templates';
+import {
+    name as nodeTemplatesName,
+    Validator as newNodeTemplateValidator
+} from './sections/node-templates';
 import {name as dslDefnitionName} from './sections/dsl-definitions';
 import {name as blueprintLabelsName} from './sections/blueprint-labels';
 import {
@@ -111,6 +114,12 @@ export class CloudifyYAML {
         const rawInputs = this.getSection('inputs');
         const _inputs = new InputValidator(rawInputs);
         return _inputs;
+    };
+
+    getNodeTemplates=()=>{
+        const rawNodeTemplates = this.getSection('node_templates');
+        const _nodeTemplates = new newNodeTemplateValidator(rawNodeTemplates);
+        return _nodeTemplates;
     };
 
     getDataTypes=()=>{

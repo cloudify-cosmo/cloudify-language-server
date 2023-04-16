@@ -15,8 +15,8 @@ import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functi
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelNames} from './blueprint';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords, pluginRegex} from './sections/imports';
 import {name as inputsName, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
 import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString, NodeTemplateItem, NodeTemplateItems} from './sections/node-templates';
 
 
 class CloudifyWords extends words {
@@ -29,6 +29,7 @@ class CloudifyWords extends words {
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
     inputs:InputItems<InputItem>;
+    nodeTemplates:NodeTemplateItems<NodeTemplateItem>;
     diagnostics:Diagnostic[];
 
     constructor() {
@@ -41,6 +42,7 @@ class CloudifyWords extends words {
         this.importedNodeTypes = [];
         this.importedNodeTypeObjects = [];
         this.inputs = {};
+        this.nodeTemplates = {};
         this.diagnostics = [];
     }
 
@@ -53,6 +55,7 @@ class CloudifyWords extends words {
         if (this.timer.isReady()) {
             await this.importPlugins();
             this.inputs = this.ctx.getInputs().contents;
+            this.nodeTemplates = this.ctx.getNodeTemplates().contents;
             this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});}
     }
 
@@ -140,17 +143,20 @@ class CloudifyWords extends words {
                 return currentKeywordOptions;
             }
         }
-
         if (this.isIntrinsicFunction()) {
+            if (this.isInputIntrinsicFunction()) {
+                return this.returnInputNames(currentKeywordOptions);
+            }
+            if (this.isPropertyIntrinsicFunction()) {
+                return this.returnNodeTemplateNames(currentKeywordOptions);
+            }
+            if (this.isAttributeIntrinsicFunction()) {
+                return this.returnNodeTemplateNames(currentKeywordOptions);
+            }
             this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
             return currentKeywordOptions;
         }
 
-        if (this.isInputIntrinsicFunction()) {
-            return this.returnInputNames(currentKeywordOptions);
-        }
-
-    
         if (this.isNodeTemplate()) {
             // This will check if the current line is like: "type:"
             if (this.isTypeKeywords()) {
@@ -222,6 +228,13 @@ class CloudifyWords extends words {
         }
         return list;
     };
+    returnNodeTemplateNames=(list:CompletionItem[])=>{
+        for (const nodeTemplateName of Object.keys(this.nodeTemplates)) {
+            const argument = `[ ${nodeTemplateName}, INSERT_PROPERTY_NAME ]`;
+            this.appendCompletionItem(argument, list);
+        }
+        return list;
+    };
     isNewSection=():boolean=>{
         return (this.ctx.cursor.indentation == 0);
     };
@@ -259,6 +272,33 @@ class CloudifyWords extends words {
             return true;
         }
         if (this.ctx.cursor.words.includes('get_input:')) {
+            return true;
+        }
+        return false;
+    };
+    isPropertyIntrinsicFunction=():boolean=>{
+        if (this.ctx.cursor.words.includes('{get_property:')) {
+            return true;
+        }
+        if (this.ctx.cursor.words.includes('get_property:')) {
+            return true;
+        }
+        return false;
+    };
+    isAttributeIntrinsicFunction=():boolean=>{
+        if (this.ctx.cursor.words.includes('{get_attribute:')) {
+            return true;
+        }
+        if (this.ctx.cursor.words.includes('get_attribute:')) {
+            return true;
+        }
+        return false;
+    };
+    isConcatIntrinsicFunction=():boolean=>{
+        if (this.ctx.cursor.words.includes('{concat:')) {
+            return true;
+        }
+        if (this.ctx.cursor.words.includes('concat:')) {
             return true;
         }
         return false;
