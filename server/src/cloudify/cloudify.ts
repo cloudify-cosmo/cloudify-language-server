@@ -11,7 +11,14 @@ import {getNodeType, validIndentation, getParentSection, validIndentationAndKeyw
 import {getNodeTypesForPluginVersion} from './marketplace';
 import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
 import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
-import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functions';
+import {
+    keywords as intrinsicFunctionKeywords,
+    lineContainsFn,
+    lineMayContainFn,
+    lineContainsGetInput,
+    lineContainsConcatFn,
+    lineContainsGetNodeTemplate
+} from './sections/intrinsic-functions';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelNames} from './blueprint';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords, pluginRegex} from './sections/imports';
 import {name as inputsName, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
@@ -144,14 +151,13 @@ class CloudifyWords extends words {
             }
         }
         if (this.isIntrinsicFunction()) {
-            if (this.isInputIntrinsicFunction()) {
-                return this.returnInputNames(currentKeywordOptions);
-            }
-            if (this.isPropertyIntrinsicFunction()) {
-                return this.returnNodeTemplateNames(currentKeywordOptions);
-            }
-            if (this.isAttributeIntrinsicFunction()) {
-                return this.returnNodeTemplateNames(currentKeywordOptions);
+            if (lineContainsFn(this.ctx.cursor.line)) {
+                if (this.isInputIntrinsicFunction()) {
+                    return this.returnInputNames(currentKeywordOptions);
+                }
+                if (this.isNodeTemplateIntrinsicFunction()) {
+                    return this.returnNodeTemplateNames(currentKeywordOptions);
+                }   
             }
             this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
             return currentKeywordOptions;
@@ -257,51 +263,16 @@ class CloudifyWords extends words {
         return validIndentationAndKeyword(this.ctx.cursor.line, 'type:');
     };
     isIntrinsicFunction=():boolean=>{
-        if ((this.ctx.cursor.words.includes('{')) && (this.ctx. cursor.words.includes('}'))) {
-            if ((this.ctx.cursor.words.indexOf('}') - this.ctx.cursor.words.indexOf('{')) >= 1) {
-                return true;
-            }
-        }
-        if (this.ctx.cursor.word.includes('{}')) {
-            return true;
-        }
-        return false;
+        return lineMayContainFn(this.ctx.cursor.line);
     };
     isInputIntrinsicFunction=():boolean=>{
-        if (this.ctx.cursor.words.includes('{get_input:')) {
-            return true;
-        }
-        if (this.ctx.cursor.words.includes('get_input:')) {
-            return true;
-        }
-        return false;
+        return lineContainsGetInput(this.ctx.cursor.line);
     };
-    isPropertyIntrinsicFunction=():boolean=>{
-        if (this.ctx.cursor.words.includes('{get_property:')) {
-            return true;
-        }
-        if (this.ctx.cursor.words.includes('get_property:')) {
-            return true;
-        }
-        return false;
-    };
-    isAttributeIntrinsicFunction=():boolean=>{
-        if (this.ctx.cursor.words.includes('{get_attribute:')) {
-            return true;
-        }
-        if (this.ctx.cursor.words.includes('get_attribute:')) {
-            return true;
-        }
-        return false;
+    isNodeTemplateIntrinsicFunction=():boolean=>{
+        return lineContainsGetNodeTemplate(this.ctx.cursor.line);
     };
     isConcatIntrinsicFunction=():boolean=>{
-        if (this.ctx.cursor.words.includes('{concat:')) {
-            return true;
-        }
-        if (this.ctx.cursor.words.includes('concat:')) {
-            return true;
-        }
-        return false;
+        return lineContainsConcatFn(this.ctx.cursor.line);
     };
     isNodeTemplate=():boolean=>{
         return this.ctx.section === nodeTemplateName;

@@ -3,7 +3,6 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-
 import {getIndentation, JSONItems} from './utils';
 import {name as labelsName} from './sections/labels';
 import {name as workflowsName} from './sections/workflows';
