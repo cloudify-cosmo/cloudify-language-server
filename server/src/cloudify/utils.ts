@@ -198,3 +198,11 @@ export class TimeManager {
     };
 
 }
+
+export function isMatch(testString:string, testPattern:string): boolean {
+    const matcher = new RegExp(testPattern);
+    if (matcher.test(testString)) {
+        return true;
+    }
+    return false;
+}

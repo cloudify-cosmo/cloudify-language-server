@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
+import { isMatch } from '../utils';
 
 export const getSecret = 'https://docs.cloudify.co/latest/developer/blueprints/spec-intrinsic-functions/#get-secret';
 export const getInput = 'https://docs.cloudify.co/latest/developer/blueprints/spec-intrinsic-functions/#get-input';
@@ -55,11 +56,33 @@ const startFn = '\\{\\s*';
 const stopFn = '\\s*\\}';
 const intrinsicFunctionNamePattern = '(' + names.join('|') + ')';
 
-function isMatch(testString:string, testPattern:string): boolean {
-    const matcher = new RegExp(testPattern);
-    if (matcher.test(testString)) {
+export function wordsMayIndicateFn(words:string[]): boolean {
+    /**
+     * Checks if the contents of this.ctx.cursor.words can indicate an intrinsic function.
+     * For example, given the lines
+     * "    foo: {"
+     * "    foo: {}"
+     * "    foo: { }"
+     * we can reasonably guess that a user wants to use an intrinsic function.
+     * Obviously, there are other use cases for that, but this is a Cloudify blueprint and that's the most
+     * common use for an inline curly base pair.
+     */
+    let word:string = '';
+    if (words.length > 0) {
+        word = words.at(-1) as string;
+    }
+
+    let lastWord:string = '';
+    if (words.length > 1) {
+        lastWord = words.at(-2) as string;
+    }
+
+    if (word === '{}') {
+        return true;
+    } else if ((word === '}') && (lastWord === '{')) {
         return true;
     }
+
     return false;
 }
 
