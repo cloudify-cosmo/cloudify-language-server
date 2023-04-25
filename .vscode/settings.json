@@ -1,7 +1,7 @@
 {
     "editor.insertSpaces": false,
     "files.autoSave": "afterDelay",
-    "files.autoSaveDelay": 500,
+    "files.autoSaveDelay": 200,
     "typescript.tsc.autoDetect": "off",
     "typescript.preferences.quoteStyle": "single",
     "editor.codeActionsOnSave": {

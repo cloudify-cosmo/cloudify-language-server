@@ -8,9 +8,11 @@ import {CompletionItem} from 'vscode-languageserver/node';
 
 export class words {
     timer:TimeManager;
+    cfyLintTimer:TimeManager;
     keywords: CompletionItem[];
     constructor() {
         this.timer = new TimeManager(0.05);
+        this.cfyLintTimer = new TimeManager(0.2);
         this.keywords = [];
     }
     appendKeyword = (keyword:string)=>{
