@@ -136,12 +136,12 @@ class CloudifyWords extends words {
     
         const currentKeywordOptions:CompletionItem[] = [];
 
-        if (this.isNewSection()) {
-            return this.returnTopLevel(currentKeywordOptions);
-        }
-
         if (isToscaDefinitionsLine(this.ctx.cursor.line)) {
             return this.returnTosca(currentKeywordOptions);
+        }
+
+        if (this.isNewSection()) {
+            return this.returnTopLevel(currentKeywordOptions);
         }
 
         if (this.isImports()) {
@@ -169,7 +169,7 @@ class CloudifyWords extends words {
                 }
                 if (this.isNodeTemplateIntrinsicFunction()) {
                     return this.returnNodeTemplateNames(currentKeywordOptions);
-                }   
+                }
             }
             this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
             return currentKeywordOptions;
@@ -254,8 +254,21 @@ class CloudifyWords extends words {
         return list;
     };
     isNewSection=():boolean=>{
-        console.log(this.ctx.cursor.line);
-        return (isMatch(this.ctx.cursor.line, '^$'));
+        try {
+            if (isMatch(this.ctx.cursor.line, '^$')) {
+                if ((this.ctx.cursor.lines.length == 1) && (this.ctx.cursor.line.length == 0)) {
+                    return true;
+                } else if ((this.ctx.cursor.line.length == 0) && this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].length == 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } catch {
+            return false;
+        }
     };
     isTosca=():boolean=>{
         return isToscaDefinitionsLine(this.ctx.cursor.line);
