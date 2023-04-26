@@ -17,6 +17,46 @@ export const keywords:string[] = [
     'relationships',
 ];
 
+
+export class NodeTemplateItem {
+    raw;
+    name:string;
+    type:string;
+    properties:object;
+
+    constructor(raw:null|object) {
+        if (raw == null) {
+            raw = {};
+        }
+
+        this.raw = raw;
+
+        this.name = '';
+        this.type = '';
+        this.properties = {};
+        this.assign();
+
+    }
+
+    assign=()=>{
+        const nodeTemplate = Object(this.raw);
+        for (const key of Object.keys(this.raw)) {          
+            if (key == 'name') {
+                this.name = nodeTemplate[key];
+            } else if (key == 'type') {
+                this.type = nodeTemplate[key];
+            } else if (key == 'properties') {
+                this.properties = nodeTemplate[key];
+            }
+        }
+    };
+}
+
+export interface NodeTemplateItems<T> {
+    [key: string]: T;
+}
+
+
 function cleanUpNodeTypeProperty(prop:nodeTypeProperty) {
     let typeValue = undefined;
     let defaultValue = undefined;
@@ -68,10 +108,23 @@ export function getPropertiesAsString(properties:Record<string, nodeTypeProperty
     return asString;
 }
 
-export class validator {
-    name:string;
-
-    constructor(name:string) {
-        this.name = name;
+export class Validator {
+    raw;
+    contents:NodeTemplateItems<NodeTemplateItem>;
+    constructor(raw:null|object|string) {
+        if (raw == null) {
+            raw = {};
+        } else if (typeof raw === 'string') {
+            raw = {};
+        }
+        this.raw = raw;
+        this.contents = Object();
+        this.assign();
     }
+    assign=()=>{
+        const inputs = Object(this.raw);
+        for (const key of Object.keys(this.raw)) {
+            this.contents[key] = new NodeTemplateItem(inputs[key]);
+        }
+    };
 }

@@ -7,9 +7,14 @@
 import {cloudify} from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
-import {commandName as cfyLintCommandName, cfyLintFix} from './cloudify/cfy-lint';
 import {
-    CodeAction, CodeActionKind, Command,
+    cfyLintFix,
+    commandName as cfyLintCommandName
+} from './cloudify/cfy-lint';
+import {
+    Command,
+    CodeAction,
+    CodeActionKind,
     TextDocuments,
     CompletionItem,
     createConnection,
@@ -59,7 +64,7 @@ connection.onInitialize((params: InitializeParams) => {
             // Tell the client that this server supports code completion.
             completionProvider: {
                 resolveProvider: true,
-                triggerCharacters: [ '- ' ]
+                triggerCharacters: ['{', '}', ':']
             },
             executeCommandProvider: {
                 commands: [cfyLintCommandName]
@@ -69,7 +74,7 @@ connection.onInitialize((params: InitializeParams) => {
     if (hasWorkspaceFolderCapability) {
         result.capabilities.workspace = {
             workspaceFolders: {
-                supported: true
+                supported: hasWorkspaceFolderCapability
             }
         };
     }

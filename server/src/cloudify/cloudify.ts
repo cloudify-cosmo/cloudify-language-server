@@ -5,18 +5,32 @@ import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
 import { cfyLint } from './cfy-lint';
-import {words} from './word-completion';
+import { words } from './word-completion';
 import {documentCursor} from './parsing';
-import {getNodeType, validIndentation, getParentSection, validIndentationAndKeyword} from './utils';
+import {
+    isMatch,
+    getNodeType,
+    validIndentation,
+    getParentSection,
+    validIndentationAndKeyword
+} from './utils';
 import {getNodeTypesForPluginVersion} from './marketplace';
 import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
 import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
-import {keywords as intrinsicFunctionKeywords} from './sections/intrinsic-functions';
+import {
+    keywords as intrinsicFunctionKeywords,
+    lineContainsFn,
+    lineMayContainFn,
+    wordsMayIndicateFn,
+    lineContainsGetInput,
+    lineContainsConcatFn,
+    lineContainsGetNodeTemplate
+} from './sections/intrinsic-functions';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelNames} from './blueprint';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords, pluginRegex} from './sections/imports';
 import {name as inputsName, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString} from './sections/node-templates';
-import {name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
+import {isToscaDefinitionsLine, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
+import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString, NodeTemplateItem, NodeTemplateItems} from './sections/node-templates';
 
 
 class CloudifyWords extends words {
@@ -29,6 +43,7 @@ class CloudifyWords extends words {
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
     inputs:InputItems<InputItem>;
+    nodeTemplates:NodeTemplateItems<NodeTemplateItem>;
     diagnostics:Diagnostic[];
 
     constructor() {
@@ -41,19 +56,22 @@ class CloudifyWords extends words {
         this.importedNodeTypes = [];
         this.importedNodeTypeObjects = [];
         this.inputs = {};
+        this.nodeTemplates = {};
         this.diagnostics = [];
     }
 
     public async refresh(textDocument:TextDocument) {
         if (this.ctx.dslVersion === '') {
             this.ctx = new BlueprintContext(textDocument.uri);
-        } else if (this.ctx instanceof BlueprintContext) {
+        } else if ((this.ctx instanceof BlueprintContext) && (this.timer.isReady())) {
             this.ctx.refresh();
-        }
-        if (this.timer.isReady()) {
             await this.importPlugins();
             this.inputs = this.ctx.getInputs().contents;
-            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});}
+            this.nodeTemplates = this.ctx.getNodeTemplates().contents;
+        }
+        if (this.cfyLintTimer.isReady()) {
+            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+        }
     }
 
     addRelativeImports=(documentUri:string, target:CompletionItem[])=>{
@@ -118,18 +136,21 @@ class CloudifyWords extends words {
     
         const currentKeywordOptions:CompletionItem[] = [];
 
-        if (this.isTosca()) {
+        if (isToscaDefinitionsLine(this.ctx.cursor.line)) {
             return this.returnTosca(currentKeywordOptions);
         }
+
         if (this.isNewSection()) {
             return this.returnTopLevel(currentKeywordOptions);
         }
+
         if (this.isImports()) {
             if (this.isPluginImport()) {
                 return this.returnPluginImports(currentKeywordOptions);
             }
             return this.returnImports(currentKeywordOptions, textDoc.textDocument.uri);
         }
+
         if (this.isInput()) {
             if (this.isTypeKeywords()) {
                 this.appendCompletionItems(inputTypes, currentKeywordOptions);
@@ -142,15 +163,18 @@ class CloudifyWords extends words {
         }
 
         if (this.isIntrinsicFunction()) {
+            if (lineContainsFn(this.ctx.cursor.line)) {
+                if (this.isInputIntrinsicFunction()) {
+                    return this.returnInputNames(currentKeywordOptions);
+                }
+                if (this.isNodeTemplateIntrinsicFunction()) {
+                    return this.returnNodeTemplateNames(currentKeywordOptions);
+                }
+            }
             this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
             return currentKeywordOptions;
         }
 
-        if (this.isInputIntrinsicFunction()) {
-            return this.returnInputNames(currentKeywordOptions);
-        }
-
-    
         if (this.isNodeTemplate()) {
             // This will check if the current line is like: "type:"
             if (this.isTypeKeywords()) {
@@ -167,7 +191,7 @@ class CloudifyWords extends words {
             }
         }
 
-        return this.returnTopLevel(currentKeywordOptions);
+        return [];
     }
 
     returnTopLevel=(list:CompletionItem[])=>{
@@ -222,11 +246,32 @@ class CloudifyWords extends words {
         }
         return list;
     };
+    returnNodeTemplateNames=(list:CompletionItem[])=>{
+        for (const nodeTemplateName of Object.keys(this.nodeTemplates)) {
+            const argument = `[ ${nodeTemplateName}, INSERT_PROPERTY_NAME ]`;
+            this.appendCompletionItem(argument, list);
+        }
+        return list;
+    };
     isNewSection=():boolean=>{
-        return (this.ctx.cursor.indentation == 0);
+        try {
+            if (isMatch(this.ctx.cursor.line, '^$')) {
+                if ((this.ctx.cursor.lines.length == 1) && (this.ctx.cursor.line.length == 0)) {
+                    return true;
+                } else if ((this.ctx.cursor.line.length == 0) && this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].length == 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } catch {
+            return false;
+        }
     };
     isTosca=():boolean=>{
-        return this.ctx.cursor.line.startsWith(toscaDefinitionsVersionName);
+        return isToscaDefinitionsLine(this.ctx.cursor.line);
     };
     isImports=():boolean=>{
         return this.ctx.section === importsKeyword;
@@ -244,24 +289,21 @@ class CloudifyWords extends words {
         return validIndentationAndKeyword(this.ctx.cursor.line, 'type:');
     };
     isIntrinsicFunction=():boolean=>{
-        if ((this.ctx.cursor.words.includes('{')) && (this.ctx. cursor.words.includes('}'))) {
-            if ((this.ctx.cursor.words.indexOf('}') - this.ctx.cursor.words.indexOf('{')) >= 1) {
-                return true;
-            }
-        }
-        if (this.ctx.cursor.word.includes('{}')) {
+        if (lineMayContainFn(this.ctx.cursor.line)) {
+            return true;
+        } else if (wordsMayIndicateFn(this.ctx.cursor.words))  {
             return true;
         }
         return false;
     };
     isInputIntrinsicFunction=():boolean=>{
-        if (this.ctx.cursor.words.includes('{get_input:')) {
-            return true;
-        }
-        if (this.ctx.cursor.words.includes('get_input:')) {
-            return true;
-        }
-        return false;
+        return lineContainsGetInput(this.ctx.cursor.line);
+    };
+    isNodeTemplateIntrinsicFunction=():boolean=>{
+        return lineContainsGetNodeTemplate(this.ctx.cursor.line);
+    };
+    isConcatIntrinsicFunction=():boolean=>{
+        return lineContainsConcatFn(this.ctx.cursor.line);
     };
     isNodeTemplate=():boolean=>{
         return this.ctx.section === nodeTemplateName;
