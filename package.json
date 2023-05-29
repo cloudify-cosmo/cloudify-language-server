@@ -3,7 +3,7 @@
   "description": "A Cloudify Language Server",
   "author": "Cloudify Platform LTD",
   "license": "LICENSE",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "pricing": "Free",
   "repository": {
     "type": "git",
