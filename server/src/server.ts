@@ -4,6 +4,8 @@
  * ------------------------------------------------------------------------------------------ */
 
 // When adding new modules, use "npm install @types/libName"
+import {documentation as intrinsicFunctions} from './cloudify/sections/intrinsic-functions';
+import {localNames as sections} from './cloudify/documentation';
 import {cloudify} from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
@@ -21,8 +23,13 @@ import {
     InitializeParams,
     InitializeResult,
     ProposedFeatures,
+    SemanticTokensLegend,
     TextDocumentSyncKind,
+    SemanticTokensBuilder,
     TextDocumentPositionParams,
+    SemanticTokensRegistrationType,
+    SemanticTokensClientCapabilities,
+    SemanticTokensRegistrationOptions,
     DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
 
@@ -35,6 +42,66 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+
+
+let semanticTokensLegend: SemanticTokensLegend;
+enum TokenTypes {
+    comment = 0,
+    keyword = 1,
+    string = 2,
+    number = 3,
+    regexp = 4,
+    type = 5,
+    class = 6,
+    interface = 7,
+    enum = 8,
+    typeParameter = 9,
+    function = 10,
+    member = 11,
+    property = 12,
+    variable = 13,
+    parameter = 14,
+    _ = 15
+}
+
+enum TokenModifiers {
+    abstract = 0,
+    deprecated = 1,
+    _ = 2,
+}
+
+
+function computeLegend(capability: SemanticTokensClientCapabilities): SemanticTokensLegend {
+
+    const clientTokenTypes = new Set<string>(capability.tokenTypes);
+    const clientTokenModifiers = new Set<string>(capability.tokenModifiers);
+
+    const tokenTypes: string[] = [];
+    for (let i = 0; i < TokenTypes._; i++) {
+        const str = TokenTypes[i];
+        if (clientTokenTypes.has(str)) {
+            tokenTypes.push(str);
+        } else {
+            if (str in sections) {
+                tokenTypes.push('keyword');
+            } else if (str in intrinsicFunctions) {
+                tokenTypes.push('function');
+            } else {
+                tokenTypes.push('type');
+            }
+        }
+    }
+
+    const tokenModifiers: string[] = [];
+    for (let i = 0; i < TokenModifiers._; i++) {
+        const str = TokenModifiers[i];
+        if (clientTokenModifiers.has(str)) {
+            tokenModifiers.push(str);
+        }
+    }
+
+    return { tokenTypes, tokenModifiers };
+}
 
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
@@ -56,6 +123,8 @@ connection.onInitialize((params: InitializeParams) => {
         capabilities.textDocument.publishDiagnostics &&
         capabilities.textDocument.publishDiagnostics.relatedInformation
     );
+
+    semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
 
     const result: InitializeResult = {
         capabilities: {
@@ -131,6 +200,17 @@ connection.onInitialized(() => {
             connection.console.log('Workspace folder change event received: ' + _event);
         });
     }
+
+    const registrationOptions: SemanticTokensRegistrationOptions = {
+        documentSelector: null,
+        legend: semanticTokensLegend,
+        range: false,
+        full: {
+            delta: true
+        }
+    };
+    void connection.client.register(SemanticTokensRegistrationType.type, registrationOptions);
+
 });
 
 // The example settings
@@ -193,6 +273,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     await cloudify.refresh(textDocument);
+
     const diagnostics = cloudify.diagnostics;
     let problems = 0;
     while (problems < settings.maxNumberOfProblems) {
@@ -212,6 +293,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         }
     }
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    // connection.languages.semanticTokens.on( () => {
+    //     console.log('Foobar');
+    //     return {
+    //         data: [],
+    //     }
+    // });
 }
 
 connection.onDidChangeWatchedFiles(_change => {
@@ -241,3 +328,64 @@ documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
+
+const tokenBuilders: Map<string, SemanticTokensBuilder> = new Map();
+
+function getTokenBuilder(document: TextDocument): SemanticTokensBuilder {
+    let result = tokenBuilders.get(document.uri);
+    if (result !== undefined) {
+        return result;
+    }
+    result = new SemanticTokensBuilder();
+    tokenBuilders.set(document.uri, result);
+    return result;
+}
+
+function buildTokens(builder: SemanticTokensBuilder, document: TextDocument) {
+    const text = document.getText();
+    const regexp = /cloudify\.nodes\.(\w+\.?)*|\w+(_\w+)?/g;
+    let match: RegExpExecArray|null;
+    let tokenCounter = 0;
+    let modifierCounter = 0;
+    let lastWord = '';
+    while ((match = regexp.exec(text)) !== null) {
+        const word = match[0];
+        const position = document.positionAt(match.index);
+        let tokenType = tokenCounter % TokenTypes._;
+        const tokenModifier = 1 << modifierCounter % TokenModifiers._;
+        if (word in intrinsicFunctions) {
+            tokenType = 16;
+        } else if (word in sections) {
+            tokenType = 1;
+        } else if (lastWord === 'type') {
+            tokenType = 5;
+        } else if (word in ['type', 'default', 'description', 'display_label', 'required', 'constraints']) {
+            tokenType = 1;
+        }
+        builder.push(position.line, position.character, word.length, tokenType, tokenModifier);
+        tokenCounter++;
+        modifierCounter++;
+        lastWord = word;
+    }
+}
+
+connection.languages.semanticTokens.on((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (document === undefined) {
+        return { data: [] };
+    }
+    const builder = getTokenBuilder(document);
+    buildTokens(builder, document);
+    return builder.build();
+});
+
+connection.languages.semanticTokens.onDelta((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (document === undefined) {
+        return { edits: [] };
+    }
+    const builder = getTokenBuilder(document);
+    builder.previousResult(params.previousResultId);
+    buildTokens(builder, document);
+    return builder.buildEdits();
+});

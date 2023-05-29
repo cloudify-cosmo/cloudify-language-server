@@ -25,7 +25,7 @@ const policyTriggers = 'https://docs.cloudify.co/latest/developer/blueprints/spe
 const dataTypes = 'https://docs.cloudify.co/latest/developer/blueprints/spec-data-types/';
 const uploadResources = 'https://docs.cloudify.co/latest/developer/blueprints/spec-upload-resources/';
 
-const localNames:StringMap = {
+export const localNames:StringMap = {
     'tosca_definitions_version': toscaDefinitionsVersion,
     'description': description,
     'imports': imports,
@@ -34,6 +34,7 @@ const localNames:StringMap = {
     'node_types': nodeTypes,
     'node_templates': nodeTemplates,
     'blueprint_labels': blueprintLabels,
+    'outputs': 'outputs',
     'capabilities': capabilities,
     'labels': labels,
     'relationships': relationships,
