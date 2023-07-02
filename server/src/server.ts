@@ -5,8 +5,8 @@
 
 // When adding new modules, use "npm install @types/libName"
 import {documentation as intrinsicFunctions} from './cloudify/sections/intrinsic-functions';
-import {localNames as sections} from './cloudify/documentation';
-import {cloudify} from './cloudify/cloudify';
+import { localNames as sections } from './cloudify/documentation';
+import { cloudify } from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {
@@ -124,7 +124,7 @@ connection.onInitialize((params: InitializeParams) => {
         capabilities.textDocument.publishDiagnostics.relatedInformation
     );
 
-    semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
+    // semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
 
     const result: InitializeResult = {
         capabilities: {

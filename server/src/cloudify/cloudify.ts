@@ -1,17 +1,23 @@
 
-import {stringify} from 'yaml';
+import { stringify, YAMLMap, parseDocument, Pair, Scalar} from 'yaml';
+
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-
 import { cfyLint } from './cfy-lint';
 import { words } from './word-completion';
-import {documentCursor} from './parsing';
+import {readFile, documentCursor} from './parsing';
 import {
+    isPair,
     isMatch,
+    isScalar,
+    isYAMLMap,
+    isYAMLSeq,
+    isTopLevel,
     getNodeType,
     validIndentation,
     getParentSection,
+    pairIsInstrinsicFunction,
     validIndentationAndKeyword
 } from './utils';
 import {getNodeTypesForPluginVersion} from './marketplace';
@@ -28,8 +34,8 @@ import {
 } from './sections/intrinsic-functions';
 import {CloudifyYAML, BlueprintContext, cloudifyTopLevelNames} from './blueprint';
 import {getImportableYamls, name as importsKeyword, keywords as importKeywords, pluginRegex} from './sections/imports';
-import {name as inputsName, keywords as inputKeywords, inputTypes, InputItem, InputItems} from './sections/inputs';
-import {isToscaDefinitionsLine, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
+import {name as inputsName, keywords as inputKeywords, inputTypes} from './sections/inputs';
+import {isToscaDefinitionsLine, name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
 import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString, NodeTemplateItem, NodeTemplateItems} from './sections/node-templates';
 
 
@@ -42,8 +48,8 @@ class CloudifyWords extends words {
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
-    inputs:InputItems<InputItem>;
-    nodeTemplates:NodeTemplateItems<NodeTemplateItem>;
+    inputs:Object;
+    nodeTemplates:Object;
     diagnostics:Diagnostic[];
 
     constructor() {
@@ -66,12 +72,13 @@ class CloudifyWords extends words {
         } else if ((this.ctx instanceof BlueprintContext) && (this.timer.isReady())) {
             this.ctx.refresh();
             await this.importPlugins();
-            this.inputs = this.ctx.getInputs().contents;
-            this.nodeTemplates = this.ctx.getNodeTemplates().contents;
+            this.inputs = this.ctx.assignInputs();
+            this.nodeTemplates = this.ctx.assignNodeTemplates();
         }
         if (this.cfyLintTimer.isReady()) {
             this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
         }
+        privateRefresh();
     }
 
     addRelativeImports=(documentUri:string, target:CompletionItem[])=>{
@@ -317,3 +324,127 @@ class CloudifyWords extends words {
 }
 
 export const cloudify = new CloudifyWords();
+
+function privateRefresh() {
+    if (cloudify.ctx.cursor.raw == null) {
+        // pass
+    } else {
+        const latestContent:string = readFile(cloudify.ctx.cursor.raw.textDocument.uri);
+        investigateYaml(latestContent);
+    }
+}
+
+
+function areRawYAMLSectionsEquivalent(str:string, sectionName:string):boolean {
+    if (sectionName === toscaDefinitionsVersionName) {
+        if ((cloudify.ctx.rawDslVersion != null) && (cloudify.ctx.rawDslVersion === str)) {
+            return true;
+        }
+    } else if (sectionName === importsKeyword) {
+        if ((cloudify.ctx.rawImports != null) && (cloudify.ctx.rawImports === str)) {
+            return true;
+        }
+    } else if (sectionName === inputsName) {
+        if ((cloudify.ctx.rawInputs != null) && (cloudify.ctx.rawInputs === str)) {
+            return true;
+        }
+    } else if (sectionName === nodeTemplateName) {
+        if ((cloudify.ctx.rawNodeTemplates != null) && (cloudify.ctx.rawNodeTemplates === str)) {
+            return true;
+        }
+    }
+    return false;   
+}
+
+function assignRawTopLevel(item:Pair) {
+    const key = item.key as Scalar;
+    const keyValue = key.value as string;
+    const itemStr = item.toString(); // Change this to use some lower level object than string.
+
+    if (keyValue === toscaDefinitionsVersionName) {
+        // @ts-ignore
+        const toscaDSL = item.value.value as string; 
+        if (areRawYAMLSectionsEquivalent(itemStr, toscaDefinitionsVersionName)) {
+            console.log('The DSL has not changed.');
+        } else if (toscaDefinitionsVersionKeywords.includes(toscaDSL)) {
+            console.log('Assigning DSL.');
+            cloudify.ctx.rawDslVersion = itemStr;
+            cloudify.ctx.dslVersion = toscaDSL;
+        } else {
+            console.log('Could not assign tosca.');
+        }
+    } else if (keyValue === importsKeyword) {
+        // This is the imports section.
+        if (areRawYAMLSectionsEquivalent(itemStr, importsKeyword)) {
+            console.log('The imports section has not changed.');
+        } else {
+            console.log('Assigning imports.');
+            cloudify.ctx.rawImports = itemStr;
+        }
+    } else if (keyValue === inputsName) {
+        // This is a inputs section.
+        if (areRawYAMLSectionsEquivalent(itemStr, inputsName)) {
+            console.log('The inputs section has not changed.');
+        } else {
+            console.log('Assigning inputs.');
+            cloudify.ctx.rawInputs = itemStr;
+        }
+    } else if (keyValue === nodeTemplateName) {
+        // This is a node templates section.
+        if (areRawYAMLSectionsEquivalent(itemStr, nodeTemplateName)) {
+            console.log('The node templates section has not changed.');
+        } else {
+            console.log('Assigning node templates.');
+            cloudify.ctx.rawNodeTemplates = itemStr;
+        }
+    }
+    return true;
+}
+
+function recurseParsedDocument(item:any) {
+    console.log(`@Investigating ${typeof item}: ${item}.`);
+    if (isPair(item)) {
+        if (isTopLevel(item)) {
+            assignRawTopLevel(item);
+        } else {
+            console.log(`!!! We have a pair, which is not a TLS ${item}.`);
+        }
+        recurseParsedDocument(item.value);
+    } else if (isScalar(item)) {
+        console.log(`>The item ${item} is a Scalar.`);
+        console.log(`The scalar range is: ${item.range}`);
+        console.log(`The current position YAML from ctx is ${cloudify.ctx.cursor.getCurrentPositionYAML()}.`);
+    } else if (isYAMLMap(item)) {
+        console.log(`>The item ${item} is a YAMLMap.`);
+        for (const mapItem of item.items) {
+            if (pairIsInstrinsicFunction(mapItem)) {
+                console.log(`?The item ${item} is an intrinsic function.`);
+            } else {
+                recurseParsedDocument(mapItem.value);    
+            }
+        }
+    } else if (isYAMLSeq(item)) {
+        console.log(`>The item ${item} is a YAMLSeq.`);
+        for (const seqItem of item.items) {
+            recurseParsedDocument(seqItem);
+        }
+    } else {
+        console.log(`!!! The item ${item} is unknown.`);
+    }
+}
+
+function investigateYaml(file:string) {
+    try {
+        const doc = parseDocument(file);
+        if ((doc.contents != null) && (doc.contents instanceof YAMLMap)) {
+            console.log(doc.contents);
+            for (const item of doc.contents.items) {
+                recurseParsedDocument(item);
+            }
+        }
+    
+    } catch (error) {
+        console.log(`An error occurred while reading YAML file: ${error}.`);
+        
+    }
+}

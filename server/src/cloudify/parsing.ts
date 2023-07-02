@@ -4,11 +4,8 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as fs from 'fs';
-import {parse} from 'yaml';
-import {
-    TextDocumentPositionParams,
-} from 'vscode-languageserver/node';
-
+import { parse } from 'yaml';
+import { TextDocumentPositionParams } from 'vscode-languageserver/node';
 import {
     fullPath,
     JSONItems,
@@ -19,9 +16,9 @@ export function getParsed(uri:string) {
     let parsed:JSONItems<object|string|[]> = {};
     try {
         const file = readFile(uri);
-        parsed = parse(file);    
-    } catch {
-        // pass
+        parsed = parse(file);
+    } catch (error) {
+        console.log('There was an error: ' + error);
     }
     return parsed;
 }
@@ -57,7 +54,7 @@ export function readLine (lines:string[], line:number):string {
 }
 
 export class documentCursor {
-    private raw:TextDocumentPositionParams|null;
+    raw:TextDocumentPositionParams|null;
     character:number;
     lineNumber:number;
     private _indentation:number;
@@ -81,6 +78,17 @@ export class documentCursor {
         this._word = '';
         this._words = [];
     }
+
+    getCurrentPositionYAML=()=>{
+        let totalCharsPosition = this.character;
+        console.log(`The line here: ${totalCharsPosition}.`);
+        for (let i = 0; i < this.lineNumber - 1; i++) {
+            totalCharsPosition += this._lines[i].length + 1;
+        }
+        console.log(`After calculation: ${totalCharsPosition}.`);
+        return totalCharsPosition;
+    }
+
     public get lines() {
         if (this._lines.length == 0) {
             if (this.raw == null) {

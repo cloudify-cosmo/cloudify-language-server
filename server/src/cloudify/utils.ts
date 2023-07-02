@@ -2,12 +2,12 @@
  * Copyright (c) Cloudify Platform LTD. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
-import {
-    CompletionItem,
-    CompletionItemKind,
-} from 'vscode-languageserver/node';
 import { documentCursor } from './parsing';
+import { cloudifyTopLevelNames } from './blueprint';
+import { YAMLMap, Pair, YAMLSeq, Scalar} from 'yaml';
 import { names as documentationNames } from './documentation';
+import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node';
+import { keywords as intrinsicFunctionKeywords } from './sections/intrinsic-functions';
 
 
 export function getNodeType(cursor:documentCursor) {
@@ -203,6 +203,34 @@ export function isMatch(testString:string, testPattern:string): boolean {
     const matcher = new RegExp(testPattern);
     if (matcher.test(testString)) {
         return true;
+    }
+    return false;
+}
+
+
+
+export function isString(value:any) {return typeof value === 'string';}
+export function isPair(item: any): item is Pair {return typeof item === "object" && item.constructor.name === "Pair";}
+export function isScalar(item: any): item is Scalar {return typeof item === "object" && item.constructor.name === "Scalar";}
+export function isYAMLMap(item: any): item is YAMLMap {return typeof item === "object" && item.constructor.name === "YAMLMap";}
+export function isYAMLSeq(item: any): item is YAMLSeq {return typeof item === "object" && item.constructor.name === "YAMLSeq";}
+
+// These are functions that all check isScalar and tehen isString.
+// Hopefully one day we can do that check once!
+export function isTopLevel(item:Pair): boolean {
+    if (isScalar(item.key) && isString(item.key.value)) {
+        if (cloudifyTopLevelNames.includes(item.key.value as string)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function pairIsInstrinsicFunction(item:Pair): boolean {
+    if ((isScalar(item.key)) && (isString(item.key.value))) {
+        if (intrinsicFunctionKeywords.includes(item.key.value as string)) {
+            return true;
+        }
     }
     return false;
 }

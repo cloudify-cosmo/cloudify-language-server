@@ -64,28 +64,3 @@ export class InputItem {
         }
     };
 }
-
-export interface InputItems<T> {
-    [key: string]: T;
-}
-
-export class Validator {
-    raw;
-    contents:InputItems<InputItem>;
-    constructor(raw:null|object|string) {
-        if (raw == null) {
-            raw = {};
-        } else if (typeof raw === 'string') {
-            raw = {};
-        }
-        this.raw = raw;
-        this.contents = Object();
-        this.assign();
-    }
-    assign=()=>{
-        const inputs = Object(this.raw);
-        for (const key of Object.keys(this.raw)) {
-            this.contents[key] = new InputItem(inputs[key]);
-        }
-    };
-}
