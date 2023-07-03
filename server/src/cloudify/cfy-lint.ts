@@ -129,3 +129,36 @@ export async function cfyLintFix(textDocument:TextDocument, fix:string) {
     const flags = commandFlags.join(' ');
     await cfyLintExecutor(commandName + ' ' + flags);
 }
+
+const getTasks = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        exec('tasklist', (err, stdout, stderr) => {
+            if (err) {
+                reject(err);
+            } else {
+                const lines = stdout.split('\n');
+                const names = lines.map(line=>line.substring(0, line.indexOf('.exe')+4));
+                resolve(names);
+            }
+        });
+    });
+};
+
+
+export const maxCfyLint = async (): Promise<boolean> => {
+    const tasks = await getTasks();
+    console.log(tasks);
+    const max = 3;
+    let total = 0;
+    for (const task of tasks) {
+        if (task.startsWith('cfy-lint')) {
+            total += 1;
+        }
+    }
+    if (total >= max) {
+        return false;
+    }
+    console.log('** total: ', total);
+
+    return true;
+};
