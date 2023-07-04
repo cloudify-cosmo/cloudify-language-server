@@ -106,8 +106,7 @@ function computeLegend(capability: SemanticTokensClientCapabilities): SemanticTo
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
     if (!commandExistsSync(cfyLintCommandName)) {
-        console.log('The command ' + cfyLintCommandName + ' is not installed in PATH. ' +
-        'Ensure that VSCode Python environment has this command available in PATH.');
+        console.error('The command ' + cfyLintCommandName + ' is not installed in PATH. ' + 'Ensure that VSCode Python environment has this command available in PATH.');
     }
 
     // Does the client support the `workspace/configuration` request?
@@ -162,7 +161,7 @@ connection.onCodeAction((params) => {
                 try {
                     parsed = JSON.parse(diagnostic.source);
                 } catch (e) {
-                    console.log('Failed to parse JSON, verify current file is YAML.');
+                    console.error('Failed to parse JSON, verify current file is YAML.');
                     return [];
                 }
             }
@@ -294,7 +293,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     }
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
     // connection.languages.semanticTokens.on( () => {
-    //     console.log('Foobar');
     //     return {
     //         data: [],
     //     }

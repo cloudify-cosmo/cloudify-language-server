@@ -86,16 +86,10 @@ export function getPropertiesAsString(properties:Record<string, nodeTypeProperty
     for (const key in properties) {
         const [
             cleanedValue,
-            typeValue,
+            _,
             defaultValue,
-            requiredValue,
-            descriptionValue] = cleanUpNodeTypeProperty(properties[key]);
-
-        console.log('We have the following objects: ');
-        console.log(`${key} type is ${typeValue}.`);
-        console.log(`${key} default is ${defaultValue}.`);
-        console.log(`${key} required is ${requiredValue}.`);
-        console.log(`${key} description is ${descriptionValue}.`);
+            __,
+            ___] = cleanUpNodeTypeProperty(properties[key]);
 
         if (defaultValue !== undefined) {
             asDict['properties'].set(key, defaultValue);

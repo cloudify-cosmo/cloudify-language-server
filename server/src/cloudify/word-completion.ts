@@ -11,8 +11,8 @@ export class words {
     cfyLintTimer:TimeManager;
     keywords: CompletionItem[];
     constructor() {
-        this.timer = new TimeManager(0.05);
-        this.cfyLintTimer = new TimeManager(0.2);
+        this.timer = new TimeManager(0.5);
+        this.cfyLintTimer = new TimeManager(0.5);
         this.keywords = [];
     }
     appendKeyword = (keyword:string)=>{

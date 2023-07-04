@@ -13,7 +13,7 @@ const cfyLintExecutor = async (command: string) => {
     try {
         const { stdout, stderr } = await execPromise(command);
         if (!stdout == null) {
-            console.log('Unexpected STDOUT: ' + stdout);
+            console.error('Unexpected STDOUT: ' + stdout);
         }
         return stderr;
     } catch {

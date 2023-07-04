@@ -81,11 +81,11 @@ export class documentCursor {
 
     getCurrentPositionYAML=()=>{
         let totalCharsPosition = this.character;
-        console.log(`The line here: ${totalCharsPosition}.`);
+        console.log(`At this line: ${totalCharsPosition}.`);
         for (let i = 0; i < this.lineNumber - 1; i++) {
             totalCharsPosition += this._lines[i].length + 1;
         }
-        console.log(`After calculation: ${totalCharsPosition}.`);
+        console.log(`Total Chars: ${totalCharsPosition}.`);
         return totalCharsPosition;
     }
 

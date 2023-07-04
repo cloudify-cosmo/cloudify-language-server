@@ -3,6 +3,9 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
+import { isMatch } from '../utils';
+import { documentCursor } from '../parsing';
+
 export const name = 'inputs';
 export const keywords = [
     'default',
@@ -18,6 +21,14 @@ export const inputTypes = [
     'dict',
     'list'
 ];
+export const inputTemplate = `# Input Template
+input_template:
+  type: string
+  display_label: Input Name
+  description: a deployment parameter
+  default: ''
+  required: true
+`
 
 export const documentation = `Parameters that are injected into a blueprint when a deployment is created. These parameters can be referenced elsewhere in the blueprint with the get_input intrinsic function.
 

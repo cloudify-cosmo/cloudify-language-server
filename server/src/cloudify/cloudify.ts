@@ -1,11 +1,16 @@
 
-import { stringify, YAMLMap, parseDocument, Pair, Scalar} from 'yaml';
-
+import {
+    Pair,
+    Scalar,
+    YAMLMap,
+    stringify,
+    parseDocument,
+} from 'yaml';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import { cfyLint } from './cfy-lint';
-import { words } from './word-completion';
+import {cfyLint} from './cfy-lint';
+import {words} from './word-completion';
 import {readFile, documentCursor} from './parsing';
 import {
     isPair,
@@ -15,28 +20,53 @@ import {
     isYAMLSeq,
     isTopLevel,
     getNodeType,
-    validIndentation,
     getParentSection,
     pairIsInstrinsicFunction,
-    validIndentationAndKeyword
 } from './utils';
 import {getNodeTypesForPluginVersion} from './marketplace';
-import {list as nodeTypeKeywords, NodeTypeItem} from './sections/node-types';
-import {list as pluginNames, regex as pluginNameRegex} from './sections/plugins';
 import {
-    keywords as intrinsicFunctionKeywords,
+    NodeTypeItem,
+    list as nodeTypeKeywords,
+} from './sections/node-types';
+import {
+    list as pluginNames,
+    regex as pluginNameRegex
+} from './sections/plugins';
+import {
     lineContainsFn,
     lineMayContainFn,
     wordsMayIndicateFn,
     lineContainsGetInput,
     lineContainsConcatFn,
-    lineContainsGetNodeTemplate
+    lineContainsGetNodeTemplate,
+    keywords as intrinsicFunctionKeywords,
 } from './sections/intrinsic-functions';
-import {CloudifyYAML, BlueprintContext, cloudifyTopLevelNames} from './blueprint';
-import {getImportableYamls, name as importsKeyword, keywords as importKeywords, pluginRegex} from './sections/imports';
-import {name as inputsName, keywords as inputKeywords, inputTypes} from './sections/inputs';
-import {isToscaDefinitionsLine, name as toscaDefinitionsVersionName, keywords as toscaDefinitionsVersionKeywords} from './sections/tosca-definitions-version';
-import {name as nodeTemplateName, keywords as nodeTemplateKeywords, getPropertiesAsString, NodeTemplateItem, NodeTemplateItems} from './sections/node-templates';
+import {
+    CloudifyYAML,
+    BlueprintContext,
+    cloudifyTopLevelNames
+} from './blueprint';
+import {
+    pluginRegex,
+    getImportableYamls,
+    name as importsName,
+    keywords as importKeywords,
+} from './sections/imports';
+import {
+    inputTypes,
+    inputTemplate,
+    name as inputsName,
+    keywords as inputKeywords,
+} from './sections/inputs';
+import {
+    name as toscaDefinitionsVersionName,
+    keywords as toscaDefinitionsVersionKeywords
+} from './sections/tosca-definitions-version';
+import {
+    getPropertiesAsString,
+    name as nodeTemplateName,
+    keywords as nodeTemplateKeywords,
+} from './sections/node-templates';
 
 
 class CloudifyWords extends words {
@@ -76,7 +106,8 @@ class CloudifyWords extends words {
             this.nodeTemplates = this.ctx.assignNodeTemplates();
         }
         if (this.cfyLintTimer.isReady()) {
-            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+            // this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+            this.diagnostics = [];
         }
         privateRefresh();
     }
@@ -143,158 +174,92 @@ class CloudifyWords extends words {
     
         const currentKeywordOptions:CompletionItem[] = [];
 
-        if (isToscaDefinitionsLine(this.ctx.cursor.line)) {
-            return this.returnTosca(currentKeywordOptions);
-        }
-
-        if (this.isNewSection()) {
-            return this.returnTopLevel(currentKeywordOptions);
-        }
-
-        if (this.isImports()) {
-            if (this.isPluginImport()) {
-                return this.returnPluginImports(currentKeywordOptions);
+        if ((this.ctx.cursor.lineNumber == 1) && (this.ctx.cursor.indentation < 1)) {
+            // Is this tosca_definitions_version line?
+            if (isMatch(this.ctx.cursor.line, `^${toscaDefinitionsVersionName}(:\\s){1}(cloudify_dsl_1_){0,1}$`)) {
+                this.appendCompletionItems(toscaDefinitionsVersionKeywords, currentKeywordOptions);
+            } else {
+                this.appendCompletionItem(toscaDefinitionsVersionName, currentKeywordOptions)
             }
-            return this.returnImports(currentKeywordOptions, textDoc.textDocument.uri);
-        }
+        } else if (this.ctx.cursor.indentation < 1) {
+            // Is this some other top level?
+            // TODO: Remove all other keys that are already in use.
+            const indexTosca = cloudifyTopLevelNames.indexOf(toscaDefinitionsVersionName);
+            if (indexTosca > -1) {
+                cloudifyTopLevelNames.splice(indexTosca, 1);
+            }
+            this.appendCompletionItems(cloudifyTopLevelNames, currentKeywordOptions);
+        } else if (this.ctx.section === importsName) {
+            if (this.ctx.cursor.line.match(/^(\s){0,4}(\-){1}/)) {
+                this.appendCompletionItems(importKeywords, currentKeywordOptions);
+                const importableYamls:string[] = getImportableYamls(textDoc.textDocument.uri);
+                this.appendCompletionItems(importableYamls, currentKeywordOptions);
+                if (this.ctx.cursor.line.match(pluginRegex)) {
+                    this.appendPluginCompletionItems(pluginNames, currentKeywordOptions);
+                }
+            } else if (this.ctx.cursor.line.match(/^(\s){0,4}/)) {
+                this.appendCompletionItem('- ', currentKeywordOptions);
+            }
+        } else if (this.ctx.section === inputsName) {
+            // Is this an Inputs Section?
+            if (this.ctx.cursor.line.match(/^(\s){0,4}/)) {
+                if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
+                    this.appendCompletionItems(inputTypes, currentKeywordOptions);
+                } else if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].match(/^(\s){0,4}[A-Za-z0-9\-\_]{1,}(:){1}/)) {
+                    this.appendCompletionItems(inputKeywords, currentKeywordOptions);
+                } else {
+                    this.appendCompletionItem(inputTemplate, currentKeywordOptions);
+                }
+            }
+        } else if (this.ctx.section === nodeTemplateName) {
+            if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
+                this.appendCompletionItems(nodeTypeKeywords, currentKeywordOptions);
+                this.appendCompletionItems(this.importedNodeTypeNames, currentKeywordOptions);
+            } else {
+                if (getParentSection(this.ctx.cursor) !== '') {
+                    this.appendCompletionItems(nodeTemplateKeywords, currentKeywordOptions);
+                    const nodeTypeName = getNodeType(this.ctx.cursor);
+                    // Get the suggested properties for node type.
+                    for (const nodeTypeObject of this.importedNodeTypeObjects) {
+                        if (nodeTypeObject.type === nodeTypeName) {
+                            const suggested = nodeTemplates.get(nodeTypeName);
+                            if (suggested !== undefined) {
+                                this.appendCompletionItem(stringify({'properties': suggested}), currentKeywordOptions);
+                            } else {
+                                const properties = getPropertiesAsString(nodeTypeObject.properties);
+                                this.appendCompletionItem(properties, currentKeywordOptions);    
+                            }
+                        }
+                    }
+            
 
-        if (this.isInput()) {
-            if (this.isTypeKeywords()) {
-                this.appendCompletionItems(inputTypes, currentKeywordOptions);
-                return currentKeywordOptions;
+                } else {
+                    this.appendCompletionItems(nodeTemplateKeywords, currentKeywordOptions);
+                }
             }
-            if (this.isKeywords()) {
-                this.appendCompletionItems(inputKeywords, currentKeywordOptions);
-                return currentKeywordOptions;
-            }
+
         }
 
         if (this.isIntrinsicFunction()) {
             if (lineContainsFn(this.ctx.cursor.line)) {
-                if (this.isInputIntrinsicFunction()) {
-                    return this.returnInputNames(currentKeywordOptions);
+                if (lineContainsGetInput(this.ctx.cursor.line)) {
+                    for (const inputName of Object.keys(this.inputs)) {
+                        this.appendCompletionItem(inputName, currentKeywordOptions);
+                    }
                 }
-                if (this.isNodeTemplateIntrinsicFunction()) {
-                    return this.returnNodeTemplateNames(currentKeywordOptions);
+                if (lineContainsGetNodeTemplate(this.ctx.cursor.line)) {
+                    for (const nodeTemplateName of Object.keys(this.nodeTemplates)) {
+                        const argument = `[ ${nodeTemplateName}, INSERT_PROPERTY_NAME ]`;
+                        this.appendCompletionItem(argument, currentKeywordOptions);
+                    }
                 }
             }
             this.appendCompletionItems(intrinsicFunctionKeywords, currentKeywordOptions);
-            return currentKeywordOptions;
         }
 
-        if (this.isNodeTemplate()) {
-            // This will check if the current line is like: "type:"
-            if (this.isTypeKeywords()) {
-                // If it's "type", then we want like "cloudify.nodes.Root"
-                return this.returnNodeTemplateTypes(currentKeywordOptions);
-            }
-            // This will check if it should be any indented
-            if (this.isKeywords()) {              
-                if (this.isNodeTemplateProperties()) {
-                    return this.returnNodeTemplatePropertiesKeywords();
-                }
-                // This will return like "type", "properties" "relationships" etc.
-                return this.returnNodeTemplateKeywords(currentKeywordOptions);
-            }
-        }
-
-        return [];
+        return currentKeywordOptions;
     }
 
-    returnTopLevel=(list:CompletionItem[])=>{
-        this.appendCompletionItems(cloudifyTopLevelNames, list);
-        return list;
-    };
-    returnTosca=(list:CompletionItem[])=>{
-        this.appendCompletionItems(toscaDefinitionsVersionKeywords, list);
-        return list;
-    };
-    returnImports=(list:CompletionItem[], uri:string)=>{
-        this.appendCompletionItems(importKeywords, list);
-        const importableYamls:string[] = getImportableYamls(uri);
-        this.appendCompletionItems(importableYamls, list);
-        return list;
-    };
-    returnPluginImports=(list:CompletionItem[])=>{
-        this.appendPluginCompletionItems(pluginNames, list);
-        return list;
-    };
-    returnNodeTemplateKeywords=(list:CompletionItem[])=>{
-        this.appendCompletionItems(nodeTemplateKeywords, list);
-        return list;
-    };
-    returnNodeTemplatePropertiesKeywords=()=>{
-        const list:CompletionItem[] = [];
-        
-        const nodeTypeName = getNodeType(this.ctx.cursor);
-        this.appendCompletionItems(nodeTemplateKeywords, list);
-        // Get the suggested properties for node type.
-        for (const nodeTypeObject of this.importedNodeTypeObjects) {
-            if (nodeTypeObject.type === nodeTypeName) {
-                const suggested = nodeTemplates.get(nodeTypeName);
-                if (suggested !== undefined) {
-                    this.appendCompletionItem(stringify({'properties': suggested}), list);
-                } else {
-                    const properties = getPropertiesAsString(nodeTypeObject.properties);
-                    this.appendCompletionItem(properties, list);    
-                }
-            }
-        }
-        return list;
-    };
-    returnNodeTemplateTypes=(list:CompletionItem[])=>{
-        this.appendCompletionItems(nodeTypeKeywords, list);
-        this.appendCompletionItems(this.importedNodeTypeNames, list);
-        return list;
-    };
-    returnInputNames=(list:CompletionItem[])=>{
-        for (const inputName of Object.keys(this.inputs)) {
-            this.appendCompletionItem(inputName, list);
-        }
-        return list;
-    };
-    returnNodeTemplateNames=(list:CompletionItem[])=>{
-        for (const nodeTemplateName of Object.keys(this.nodeTemplates)) {
-            const argument = `[ ${nodeTemplateName}, INSERT_PROPERTY_NAME ]`;
-            this.appendCompletionItem(argument, list);
-        }
-        return list;
-    };
-    isNewSection=():boolean=>{
-        try {
-            if (isMatch(this.ctx.cursor.line, '^$')) {
-                if ((this.ctx.cursor.lines.length == 1) && (this.ctx.cursor.line.length == 0)) {
-                    return true;
-                } else if ((this.ctx.cursor.line.length == 0) && this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].length == 0) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        } catch {
-            return false;
-        }
-    };
-    isTosca=():boolean=>{
-        return isToscaDefinitionsLine(this.ctx.cursor.line);
-    };
-    isImports=():boolean=>{
-        return this.ctx.section === importsKeyword;
-    };
-    isPluginImport=():boolean=>{
-        return this.ctx.cursor.line.match(pluginRegex) != null;
-    };
-    isInput=():boolean=>{
-        return this.ctx.section === inputsName;
-    };
-    isKeywords=():boolean=>{
-        return validIndentation(this.ctx.cursor.line);
-    };
-    isTypeKeywords=():boolean=>{
-        return validIndentationAndKeyword(this.ctx.cursor.line, 'type:');
-    };
     isIntrinsicFunction=():boolean=>{
         if (lineMayContainFn(this.ctx.cursor.line)) {
             return true;
@@ -303,23 +268,8 @@ class CloudifyWords extends words {
         }
         return false;
     };
-    isInputIntrinsicFunction=():boolean=>{
-        return lineContainsGetInput(this.ctx.cursor.line);
-    };
-    isNodeTemplateIntrinsicFunction=():boolean=>{
-        return lineContainsGetNodeTemplate(this.ctx.cursor.line);
-    };
     isConcatIntrinsicFunction=():boolean=>{
         return lineContainsConcatFn(this.ctx.cursor.line);
-    };
-    isNodeTemplate=():boolean=>{
-        return this.ctx.section === nodeTemplateName;
-    };
-    isNodeTemplateProperties=():boolean=>{
-        if (getParentSection(this.ctx.cursor) !== '') {
-            return true;
-        }
-        return false;
     };
 }
 
@@ -340,7 +290,7 @@ function areRawYAMLSectionsEquivalent(str:string, sectionName:string):boolean {
         if ((cloudify.ctx.rawDslVersion != null) && (cloudify.ctx.rawDslVersion === str)) {
             return true;
         }
-    } else if (sectionName === importsKeyword) {
+    } else if (sectionName === importsName) {
         if ((cloudify.ctx.rawImports != null) && (cloudify.ctx.rawImports === str)) {
             return true;
         }
@@ -365,36 +315,36 @@ function assignRawTopLevel(item:Pair) {
         // @ts-ignore
         const toscaDSL = item.value.value as string; 
         if (areRawYAMLSectionsEquivalent(itemStr, toscaDefinitionsVersionName)) {
-            console.log('The DSL has not changed.');
+            console.debug('assignRawTopLevel: The DSL has not changed.');
         } else if (toscaDefinitionsVersionKeywords.includes(toscaDSL)) {
-            console.log('Assigning DSL.');
+            console.debug('assignRawTopLevel: Assigning DSL.');
             cloudify.ctx.rawDslVersion = itemStr;
             cloudify.ctx.dslVersion = toscaDSL;
         } else {
-            console.log('Could not assign tosca.');
+            console.debug('assignRawTopLevel: Could not assign tosca.');
         }
-    } else if (keyValue === importsKeyword) {
+    } else if (keyValue === importsName) {
         // This is the imports section.
-        if (areRawYAMLSectionsEquivalent(itemStr, importsKeyword)) {
-            console.log('The imports section has not changed.');
+        if (areRawYAMLSectionsEquivalent(itemStr, importsName)) {
+            console.debug('assignRawTopLevel: The imports section has not changed.');
         } else {
-            console.log('Assigning imports.');
+            console.debug('assignRawTopLevel: Assigning imports.');
             cloudify.ctx.rawImports = itemStr;
         }
     } else if (keyValue === inputsName) {
         // This is a inputs section.
         if (areRawYAMLSectionsEquivalent(itemStr, inputsName)) {
-            console.log('The inputs section has not changed.');
+            console.debug('assignRawTopLevel: The inputs section has not changed.');
         } else {
-            console.log('Assigning inputs.');
+            console.debug('assignRawTopLevel: Assigning inputs.');
             cloudify.ctx.rawInputs = itemStr;
         }
     } else if (keyValue === nodeTemplateName) {
         // This is a node templates section.
         if (areRawYAMLSectionsEquivalent(itemStr, nodeTemplateName)) {
-            console.log('The node templates section has not changed.');
+            console.debug('assignRawTopLevel: The node templates section has not changed.');
         } else {
-            console.log('Assigning node templates.');
+            console.debug('assignRawTopLevel: Assigning node templates.');
             cloudify.ctx.rawNodeTemplates = itemStr;
         }
     }
@@ -406,14 +356,11 @@ function recurseParsedDocument(item:any) {
     if (isPair(item)) {
         if (isTopLevel(item)) {
             assignRawTopLevel(item);
-        } else {
-            console.log(`!!! We have a pair, which is not a TLS ${item}.`);
         }
         recurseParsedDocument(item.value);
     } else if (isScalar(item)) {
-        console.log(`>The item ${item} is a Scalar.`);
-        console.log(`The scalar range is: ${item.range}`);
-        console.log(`The current position YAML from ctx is ${cloudify.ctx.cursor.getCurrentPositionYAML()}.`);
+        console.log(`>The item ${item} is a Scalar. Range: ${item.range}`);
+        cloudify.ctx.cursor.getCurrentPositionYAML();
     } else if (isYAMLMap(item)) {
         console.log(`>The item ${item} is a YAMLMap.`);
         for (const mapItem of item.items) {
@@ -437,14 +384,11 @@ function investigateYaml(file:string) {
     try {
         const doc = parseDocument(file);
         if ((doc.contents != null) && (doc.contents instanceof YAMLMap)) {
-            console.log(doc.contents);
             for (const item of doc.contents.items) {
                 recurseParsedDocument(item);
             }
         }
-    
     } catch (error) {
-        console.log(`An error occurred while reading YAML file: ${error}.`);
-        
+        console.error(`An error occurred while reading YAML file: ${error}.`);
     }
 }
