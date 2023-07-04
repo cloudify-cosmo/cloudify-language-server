@@ -1,7 +1,7 @@
 /* eslint-disable linebreak-style */
 import {promisify} from 'util';
 import {fullPath} from './utils';
-import {exec} from 'child_process';
+import {exec, execSync } from 'child_process';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {Range, Diagnostic, DiagnosticSeverity} from 'vscode-languageserver/node';
 
@@ -130,31 +130,32 @@ export async function cfyLintFix(textDocument:TextDocument, fix:string) {
     await cfyLintExecutor(commandName + ' ' + flags);
 }
 
-const getCfyLintTasks = (): Promise<any> => {
-    return new Promise((resolve, reject) => {
-        exec('tasklist', (err, stdout, stderr) => {
-            if (err) {
-                reject(err);
-            } else {
-                const processNames  = stdout
-                    .split('\n')
-                    .slice(2)
-                    .filter(name => name.includes('cfy-lint'));
-                resolve(processNames);
-            }
-        });
-    });
+const getCfyLintTasks = (): string[] => {
+    try {
+        const stdout = execSync('tasklist').toString();
+        const processNames = stdout
+            .split('\n')
+            .slice(2)
+            .filter((name) => name.includes('cfy-lint'));
+        return processNames;
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
 };
 
 
-export const maxCfyLint = async (): Promise<boolean> => {
-    const processNames  = await getCfyLintTasks();
-    console.log(processNames);
-    const max = 3;
-    console.log('** processNames lenght : ', processNames.length);
-
-    if (processNames.length >= max) {
-        return false;
+export const maxCfyLint = (): boolean => {
+    try {
+        const processNames = getCfyLintTasks();
+        const max = 2;
+        if (processNames.length >= max) {
+            return false;
+        }
+        return true;
+    } catch (error) {
+        // Handle the error here
+        console.error(error);
+        throw error;
     }
-    return true;
 };
