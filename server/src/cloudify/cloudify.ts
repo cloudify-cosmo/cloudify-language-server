@@ -69,9 +69,8 @@ class CloudifyWords extends words {
             this.inputs = this.ctx.getInputs().contents;
             this.nodeTemplates = this.ctx.getNodeTemplates().contents;
         }
-        const cfylint = await maxCfyLint();
-        console.log('** cfylint: ', cfylint);
-        if (this.cfyLintTimer.isReady() && cfylint) {
+        const limitCfyLint = await maxCfyLint();
+        if (limitCfyLint) {
             this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
         }
     }
