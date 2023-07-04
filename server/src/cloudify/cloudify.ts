@@ -4,7 +4,7 @@ import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
 
-import { cfyLint } from './cfy-lint';
+import { cfyLint, maxCfyLint } from './cfy-lint';
 import { words } from './word-completion';
 import {documentCursor} from './parsing';
 import {
@@ -69,7 +69,8 @@ class CloudifyWords extends words {
             this.inputs = this.ctx.getInputs().contents;
             this.nodeTemplates = this.ctx.getNodeTemplates().contents;
         }
-        if (this.cfyLintTimer.isReady()) {
+        
+        if (this.cfyLintTimer.isReady() && maxCfyLint()) {
             this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
         }
     }
