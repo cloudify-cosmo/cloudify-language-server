@@ -17,8 +17,6 @@ export const documentation = `Reference other blueprint files, plugins, types fi
 
 For more information, see https://docs.cloudify.co/latest/developer/blueprints/spec-imports/.`;
 
-export const pluginRegex = /^\\s+-\\s?plugin:\\s{0,1}/;
-
 // TODO: Add find yaml files in subfolders and add them to import options.
 // TODO: Add version constraints prediction.
 

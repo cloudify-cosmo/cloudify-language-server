@@ -6,7 +6,7 @@
 // When adding new modules, use "npm install @types/libName"
 import {documentation as intrinsicFunctions} from './cloudify/sections/intrinsic-functions';
 import { localNames as sections } from './cloudify/documentation';
-import { cloudify } from './cloudify/cloudify';
+import { CloudifyWords } from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {
@@ -42,6 +42,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+export const cloudify = new CloudifyWords();
 
 
 let semanticTokensLegend: SemanticTokensLegend;
@@ -272,6 +273,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     await cloudify.refresh(textDocument);
+    if (cloudify.importsReload == true) {
+        await cloudify.importPlugins();
+        cloudify.importsReload = false;
+    }
 
     const diagnostics = cloudify.diagnostics;
     let problems = 0;
@@ -307,7 +312,11 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
     (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-        return cloudify.contextualizedKeywords(_textDocumentPosition);
+        // cloudify.currentKeywords = [];
+        cloudify.refreshCursor(_textDocumentPosition);
+        cloudify.privateRefresh();
+        // cloudify.contextualizedKeywords();
+        return cloudify.currentKeywords;
     }
 );
 
@@ -387,3 +396,4 @@ connection.languages.semanticTokens.onDelta((params) => {
     buildTokens(builder, document);
     return builder.buildEdits();
 });
+

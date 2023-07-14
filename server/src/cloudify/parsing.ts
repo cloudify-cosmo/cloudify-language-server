@@ -57,6 +57,7 @@ export class documentCursor {
     raw:TextDocumentPositionParams|null;
     character:number;
     lineNumber:number;
+    private _fileIndentation:number|null;
     private _indentation:number;
     private _line:string;
     private _lines:string[];
@@ -75,18 +76,41 @@ export class documentCursor {
         this._lines = [];
         this._line = '';
         this._indentation = 0;
+        this._fileIndentation = null;
         this._word = '';
         this._words = [];
     }
 
-    getCurrentPositionYAML=()=>{
-        let totalCharsPosition = this.character;
-        console.log(`At this line: ${totalCharsPosition}.`);
-        for (let i = 0; i < this.lineNumber - 1; i++) {
-            totalCharsPosition += this._lines[i].length + 1;
+    public get currentCharacter() {
+        let total = 0;
+        for (let i = 0; i < this.lineNumber; i++) {
+            if (this.lines[i] === undefined) {
+                break;
+            }
+            total += this.lines[i].length;
+            total += 1;
         }
-        console.log(`Total Chars: ${totalCharsPosition}.`);
-        return totalCharsPosition;
+        return total;
+    }
+
+    public get finalCharacter() {
+        let total = 0;
+        for (let i = 0; i < this._lines.length; i++) {
+            total += this.lines[i].length + 1;
+        }
+        return total += 1;
+    }
+
+    getLineNumberFromCurrentCharacter=(char:number)=>{
+        let total = 0;
+        for (let i = 0; i < this.lines.length; i++) {
+            total += this.lines[i].length;
+            total += 1;
+            if (total >= char) {
+                return i;
+            }
+        }
+        return this.lineNumber;
     }
 
     public get lines() {
@@ -99,6 +123,9 @@ export class documentCursor {
         }
         return this._lines;
     }
+    public set lines(value:string[]) {
+        this._lines = value;
+    }
     public get line() {
         if (this._line === '') {
             this._line = readLine(this.lines, this.lineNumber - 1);
@@ -110,6 +137,29 @@ export class documentCursor {
             this._indentation = getIndentation(this.line);
         }
         return this._indentation;
+    }
+    public get fileIndentation() {
+        if (this._fileIndentation == null) {
+            for (let line of this.lines) {
+                let indentation = getIndentation(line);
+                if ((indentation > 0) && (indentation % 2 == 0)) {
+                    this._fileIndentation = indentation;
+                    break;
+                }
+            }
+            if (this._fileIndentation == null) {
+                this._fileIndentation = 2;
+            }
+        }
+        return this._fileIndentation;
+    }
+    isLineIndentedLevel(level:number) {
+        const pattern = new RegExp(`^(\\s){${this.fileIndentation * level}}[A-Za-z0-9\_\-]*`);
+        const matches = this.line.match(pattern);
+        if (matches == null) {
+            return false;
+        }
+        return matches.length;
     }
     public get word() {
         if (this._word === '') {
@@ -126,5 +176,13 @@ export class documentCursor {
     isNewSection=():boolean=>{
         return (this.indentation == 0);
     };
-
+    public currentCharInsideScalar(range:any):boolean {
+        let result = false;
+        if ((range != null) && (range !== undefined)) {
+            if ((this.currentCharacter > range[0]) && (this.currentCharacter <= range[1] + 1) || (this.currentCharacter <= range[2] + 1)) {
+                result = true;
+            }
+        }
+        return result;
+    }
 }

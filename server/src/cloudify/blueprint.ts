@@ -65,6 +65,10 @@ export class CloudifyYAML {
     nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
     private _cursor:documentCursor; // Where we are located in the file.
     private _section:string;  // The current section we are editing, e.g. inputs, imports.
+    private _sectionStart:number;
+    private _sectionEnd:number;
+    private _processingSection:string;
+    private _path:string;
 
     constructor() {
         this.parsed = {};
@@ -79,6 +83,38 @@ export class CloudifyYAML {
         this.imports = null;
         this.inputs = {};
         this.nodeTypes = null;
+        this._sectionStart = 0;
+        this._sectionEnd = 0;
+        this._processingSection = '';
+        this._path = '';
+    }
+
+    public get yamlPath() {
+        return this._path;
+    }
+    public set yamlPath(value) {
+        this._path = value;
+    }
+    public get processingSection() {
+        return this._processingSection;
+    }
+    public set processingSection(value) {
+        this._processingSection = value;
+    }
+    public get sectionStart() {
+        return this._sectionStart;
+    }
+
+    public set sectionStart(value) {
+        this._sectionStart = value;
+    }
+
+    public get sectionEnd() {
+        return this._sectionEnd;
+    }
+
+    public set sectionEnd(value) {
+        this._sectionEnd = value;
     }
 
     public get cursor() {
@@ -139,24 +175,31 @@ export class CloudifyYAML {
     };
 
     public get section() {
-        // We want to reverse from our current line number.
-        for (let i = this.cursor.lineNumber - 1; i >= 0; i--) {
-            const line = this.cursor.lines[i];
-            // If the line isn't 0 indentation or contain any strings,
-            // then it's not the start of a new section.
-            if ((line === undefined) || (line.length == 0) || (getIndentation(line) != 0)) {
-                continue;
-            }
-            // Let's look at the first key.
-            const keys:string[] = line.split(':');
-            if (cloudifyTopLevelNames.includes(keys[0])) {
-                // If it fits, use it.
-                this._section = keys[0];
-                break;
-            }
-        }
         return this._section;
     }
+    public set section(value) {
+        this._section = value;
+    }
+
+    // public get section() {
+    //     // We want to reverse from our current line number.
+    //     for (let i = this.cursor.lineNumber - 1; i >= 0; i--) {
+    //         const line = this.cursor.lines[i];
+    //         // If the line isn't 0 indentation or contain any strings,
+    //         // then it's not the start of a new section.
+    //         if ((line === undefined) || (line.length == 0) || (getIndentation(line) != 0)) {
+    //             continue;
+    //         }
+    //         // Let's look at the first key.
+    //         const keys:string[] = line.split(':');
+    //         if (cloudifyTopLevelNames.includes(keys[0])) {
+    //             // If it fits, use it.
+    //             this._section = keys[0];
+    //             break;
+    //         }
+    //     }
+    //     return this._section;
+    // }
 
 }
 

@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 import { documentCursor } from './parsing';
 import { cloudifyTopLevelNames } from './blueprint';
-import { YAMLMap, Pair, YAMLSeq, Scalar} from 'yaml';
+import { YAMLMap, Pair, YAMLSeq, Range, Scalar} from 'yaml';
 import { names as documentationNames } from './documentation';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node';
 import { keywords as intrinsicFunctionKeywords } from './sections/intrinsic-functions';
@@ -210,10 +210,10 @@ export function isMatch(testString:string, testPattern:string): boolean {
 
 
 export function isString(value:any) {return typeof value === 'string';}
-export function isPair(item: any): item is Pair {return typeof item === "object" && item.constructor.name === "Pair";}
-export function isScalar(item: any): item is Scalar {return typeof item === "object" && item.constructor.name === "Scalar";}
-export function isYAMLMap(item: any): item is YAMLMap {return typeof item === "object" && item.constructor.name === "YAMLMap";}
-export function isYAMLSeq(item: any): item is YAMLSeq {return typeof item === "object" && item.constructor.name === "YAMLSeq";}
+export function isPair(item: any): item is Pair {return item != null && typeof item === "object" && item.constructor.name === "Pair";}
+export function isScalar(item: any): item is Scalar {return item != null && typeof item === "object" && item.constructor.name === "Scalar";}
+export function isYAMLMap(item: any): item is YAMLMap {return item != null && typeof item === "object" && item.constructor.name === "YAMLMap";}
+export function isYAMLSeq(item: any): item is YAMLSeq {return item != null && typeof item === "object" && item.constructor.name === "YAMLSeq";}
 
 // These are functions that all check isScalar and tehen isString.
 // Hopefully one day we can do that check once!
@@ -233,4 +233,12 @@ export function pairIsInstrinsicFunction(item:Pair): boolean {
         }
     }
     return false;
+}
+
+export function makeCamelCase(str:string):string {
+    let newStr = '';
+    for (let elem of str.split(/[\-\_]/)) {
+        newStr += `${elem.charAt(0).toUpperCase()}${elem.slice(1)} `;
+    }
+    return newStr.trim();
 }
