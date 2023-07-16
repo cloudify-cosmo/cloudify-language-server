@@ -419,8 +419,25 @@ export class CloudifyWords extends words {
         return true;
     }
 
+    private unAssignDocumentation(item:any):boolean {
+        if ((item.key.value === 'description') && (item.value.value.length > 1)) {
+            if ((item.value.type === 'BLOCK_FOLDED') && (this.ctx.cursor.indentation < 1)) {
+                return true;
+            } else if ((item.value.type === 'BLOCK_LITERAL') && (this.ctx.cursor.indentation < 1)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private assignSections(nextItem:any, item:any) {
+        console.log(`The item is: `)
+        console.log(item);
         if ((item.value != null) && (item.key != null)) {
+            if (this.unAssignDocumentation(item)) {
+                this.ctx.section = '';  
+                return;
+            }
             if ((nextItem == null) && (this.ctx.cursor.currentCharacter > item.key.range[2])) {
                 this.ctx.sectionStart = item.key.range[0];
                 this.ctx.sectionEnd = this.ctx.cursor.finalCharacter;
