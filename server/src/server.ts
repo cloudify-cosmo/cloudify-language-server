@@ -123,8 +123,8 @@ connection.onInitialize((params: InitializeParams) => {
         capabilities.textDocument.publishDiagnostics &&
         capabilities.textDocument.publishDiagnostics.relatedInformation
     );
-
-    // semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
+    //eslint-disable-next-line
+    semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
 
     const result: InitializeResult = {
         capabilities: {
@@ -297,11 +297,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         }
     }
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-    // connection.languages.semanticTokens.on( () => {
-    //     return {
-    //         data: [],
-    //     }
-    // });
+    connection.languages.semanticTokens.on( () => {
+        return {data: []};
+    });
 }
 
 connection.onDidChangeWatchedFiles(_change => {

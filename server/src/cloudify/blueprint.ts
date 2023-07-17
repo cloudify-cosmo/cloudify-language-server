@@ -3,21 +3,16 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import {getIndentation, JSONItems} from './utils';
+import {JSONItems} from './utils';
 import {name as labelsName} from './sections/labels';
 import {name as workflowsName} from './sections/workflows';
 import {documentCursor, readLines, getParsed} from './parsing';
 import {name as descriptionName} from './sections/description';
 import {name as relationshipsName} from './sections/relationships';
-import {
-    name as nodeTemplatesName,
-    Validator as newNodeTemplateValidator
-} from './sections/node-templates';
+import {name as nodeTemplatesName} from './sections/node-templates';
 import {name as dslDefnitionName} from './sections/dsl-definitions';
 import {name as blueprintLabelsName} from './sections/blueprint-labels';
-import {
-    name as inputsName,
-} from './sections/inputs';
+import {name as inputsName} from './sections/inputs';
 import {
     name as importsName,
     Validator as ImportsValidator
@@ -30,11 +25,7 @@ import {
     name as capabilitiesName,
     alternateName as outputsName
 } from './sections/capabilities';
-import {
-    name as toscaDefinitionsVersionName,
-    Validator as CloudifyToscaDefinitionsVersionValidator
-} from './sections/tosca-definitions-version';
-import { MapLike } from 'yaml/dist/nodes/YAMLMap';
+import {name as toscaDefinitionsVersionName} from './sections/tosca-definitions-version';
 
 export const cloudifyTopLevelNames = [
     inputsName,
@@ -61,6 +52,7 @@ export class CloudifyYAML {
     rawNodeTemplates:string; // TODO: Change to a better type for comparison.
     dslVersion:string; // The resolved current DSL version. May not be null.
     imports:ImportsValidator|null; // A list of imports.
+    //eslint-disable-next-line
     inputs:Object; // A dictionary of inputs.
     nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
     private _cursor:documentCursor; // Where we are located in the file.
@@ -148,15 +140,15 @@ export class CloudifyYAML {
             return obj[inputsName];
         }
         return {};
-    }
+    };
 
     assignNodeTemplates=()=>{
         const obj = JSON.parse(this.rawNodeTemplates);
         if (nodeTemplatesName in obj) {
             return obj[nodeTemplatesName];
         }
-        return {}
-    }
+        return {};
+    };
 
     // getNodeTemplates=()=>{
     //     const rawNodeTemplates = this.getSection('node_templates');

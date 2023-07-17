@@ -111,7 +111,7 @@ export class documentCursor {
             }
         }
         return this.lineNumber;
-    }
+    };
 
     public get lines() {
         if (this._lines.length == 0) {
@@ -140,8 +140,8 @@ export class documentCursor {
     }
     public get fileIndentation() {
         if (this._fileIndentation == null) {
-            for (let line of this.lines) {
-                let indentation = getIndentation(line);
+            for (const line of this.lines) {
+                const indentation = getIndentation(line);
                 if ((indentation > 0) && (indentation % 2 == 0)) {
                     this._fileIndentation = indentation;
                     break;
@@ -154,6 +154,7 @@ export class documentCursor {
         return this._fileIndentation;
     }
     isLineIndentedLevel(level:number) {
+        //eslint-disable-next-line
         const pattern = new RegExp(`^(\\s){${this.fileIndentation * level}}[A-Za-z0-9\_\-]*`);
         const matches = this.line.match(pattern);
         if (matches == null) {
@@ -176,6 +177,7 @@ export class documentCursor {
     isNewSection=():boolean=>{
         return (this.indentation == 0);
     };
+    //eslint-disable-next-line
     public currentCharInsideScalar(range:any):boolean {
         let result = false;
         if ((range != null) && (range !== undefined)) {

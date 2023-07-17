@@ -9,19 +9,16 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-// import {cfyLint} from './cfy-lint';
+import {cfyLint} from './cfy-lint';
 import {words} from './word-completion';
 import {readFile, documentCursor} from './parsing';
 import {
     isPair,
-    isMatch,
     isScalar,
     isYAMLMap,
     isYAMLSeq,
     isTopLevel,
-    getNodeType,
     makeCamelCase,
-    getParentSection,
     pairIsInstrinsicFunction,
 } from './utils';
 import {getNodeTypesForPluginVersion} from './marketplace';
@@ -54,7 +51,6 @@ import {
 } from './sections/imports';
 import {
     inputTypes,
-    inputTemplate,
     name as inputsName,
     keywords as inputKeywords,
 } from './sections/inputs';
@@ -67,7 +63,6 @@ import {
     name as nodeTemplateName,
     keywords as nodeTemplateKeywords,
 } from './sections/node-templates';
-import { getIndentation } from './utils';
 
 
 export class CloudifyWords extends words {
@@ -79,7 +74,9 @@ export class CloudifyWords extends words {
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
+    //eslint-disable-next-line
     inputs:Object;
+    //eslint-disable-next-line
     nodeTemplates:Object;
     diagnostics:Diagnostic[];
     _currentKeywords:CompletionItem[];
@@ -129,10 +126,15 @@ export class CloudifyWords extends words {
         if (this.ctx.section !== importsName) {
             return;
         }
+        //eslint-disable-next-line
         if (this.ctx.cursor.line.match(/^(\s){0,4}(\-(\s)plugin:)/)) {
             this.registerPluginImports();
+            if (this.importedNodeTypeNames.length == 0) {
+                this.importsReload == true;
+            }
+        //eslint-disable-next-line
         } else if (this.ctx.cursor.line.match(/^(\s){0,4}(\-){1}/)) {
-            for (let kw of importKeywords) {
+            for (const kw of importKeywords) {
                 if ((!(this.ctx.rawImports.includes(kw)) || (kw === 'plugin:'))) {
                     this.appendCurrentKeyword(kw);
                 }
@@ -186,7 +188,7 @@ export class CloudifyWords extends words {
             return;
         }
         const unimportedPlugins = [];
-        for (let name of pluginNames) {
+        for (const name of pluginNames) {
             if (!(this.ctx.rawImports.includes(name))) {
                 unimportedPlugins.push(name);
             }
@@ -194,50 +196,48 @@ export class CloudifyWords extends words {
         this.appendPluginCompletionItems(unimportedPlugins, this._currentKeywords);
     }
 
-    private registerNodeTemplates() {
-        if (this.ctx.section !== nodeTemplateName) {
-            return;
-        }
-        const indentation = this.ctx.cursor.indentation - 1;
-        let fileIndentation = this.ctx.cursor.fileIndentation;
-        if (fileIndentation == null) {
-            fileIndentation = indentation;
-        }
-        if (fileIndentation === indentation) {
-            const neededIndent = ' '.repeat(fileIndentation);
-            this.appendCurrentKeyword(neededIndent);
-        } else if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
-            this.appendCurrentKeywords(nodeTypeKeywords);
-            this.appendCurrentKeywords(this.importedNodeTypeNames);
-        } else if (this.ctx.cursor.line.match(/^(\s){0,4}$/)) {
-            console.log(`1`);
-            for (let name of nodeTemplateKeywords) {
-                if (!(name.endsWith(':'))) {
-                    name = `${name}:`;
-                }
-                this.appendCurrentKeyword(name);
-            }
-        } else {
-            console.log(`2`);
-            if (getParentSection(this.ctx.cursor) !== '') {
-                this.appendCurrentKeywords(nodeTemplateKeywords);
-                const nodeTypeName = getNodeType(this.ctx.cursor);
-                // Get the suggested properties for node type.
-                for (const nodeTypeObject of this.importedNodeTypeObjects) {
-                    if (nodeTypeObject.type === nodeTypeName) {
-                        const suggested = nodeTemplates.get(nodeTypeName);
-                        if (suggested !== undefined) {
-                            this.appendCurrentKeyword(stringify({'properties': suggested}));
-                        } else {
-                            const properties = getPropertiesAsString(nodeTypeObject.properties);
-                            this.appendCurrentKeyword(properties);
-                        }
-                    }
-                }
-            }
-        }
+    // private registerNodeTemplates() {
+    //     if (this.ctx.section !== nodeTemplateName) {
+    //         return;
+    //     }
+    //     const indentation = this.ctx.cursor.indentation - 1;
+    //     let fileIndentation = this.ctx.cursor.fileIndentation;
+    //     if (fileIndentation == null) {
+    //         fileIndentation = indentation;
+    //     }
+    //     if (fileIndentation === indentation) {
+    //         const neededIndent = ' '.repeat(fileIndentation);
+    //         this.appendCurrentKeyword(neededIndent);
+    //     } else if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
+    //         this.appendCurrentKeywords(nodeTypeKeywords);
+    //         this.appendCurrentKeywords(this.importedNodeTypeNames);
+    //     } else if (this.ctx.cursor.line.match(/^(\s){0,4}$/)) {
+    //         for (let name of nodeTemplateKeywords) {
+    //             if (!(name.endsWith(':'))) {
+    //                 name = `${name}:`;
+    //             }
+    //             this.appendCurrentKeyword(name);
+    //         }
+    //     } else {
+    //         if (getParentSection(this.ctx.cursor) !== '') {
+    //             this.appendCurrentKeywords(nodeTemplateKeywords);
+    //             const nodeTypeName = getNodeType(this.ctx.cursor);
+    //             // Get the suggested properties for node type.
+    //             for (const nodeTypeObject of this.importedNodeTypeObjects) {
+    //                 if (nodeTypeObject.type === nodeTypeName) {
+    //                     const suggested = nodeTemplates.get(nodeTypeName);
+    //                     if (suggested !== undefined) {
+    //                         this.appendCurrentKeyword(stringify({'properties': suggested}));
+    //                     } else {
+    //                         const properties = getPropertiesAsString(nodeTypeObject.properties,);
+    //                         this.appendCurrentKeyword(properties);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
 
-    }
+    // }
 
     private registerSpaces() {
         if (this.ctx.cursor.line.match(/(:){1}(\s){1,}$/)) {
@@ -249,6 +249,7 @@ export class CloudifyWords extends words {
             space = `${'  '.repeat(currentIndent)}`;
         }
         if ((this.ctx.cursor.lineNumber > 1) && (this.ctx.cursor.line !== undefined)) {
+            //eslint-disable-next-line
             if ((this.ctx.section === importsName) && !(this.ctx.cursor.line.match(/^(\s){0,4}[\-]{1}/))) {
                 space += '- ';
                 this.appendCurrentKeyword(space);
@@ -259,6 +260,7 @@ export class CloudifyWords extends words {
     }
 
     public async refresh(textDocument:TextDocument) {
+        // TODO: See if we can load an already existing file completely.
         if (this.ctx.dslVersion === '') {
             this.ctx = new BlueprintContext(textDocument.uri);
         }
@@ -270,7 +272,7 @@ export class CloudifyWords extends words {
             }
         }
         if (this.cfyLintTimer.isReady()) {
-            // this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
             this.diagnostics = [];
         }
 
@@ -284,7 +286,6 @@ export class CloudifyWords extends words {
     };
 
     public async importPlugins() {
-
         if (this.ctx != null) {
             if (this.ctx.imports != null) {
                 for (const plugin of this.ctx.imports.plugins) {
@@ -313,6 +314,7 @@ export class CloudifyWords extends words {
         if (pluginSubString.length == 1) {
             const pluginName:string = pluginSubString[0];
             if (!this.importedPlugins.includes(pluginName)) {
+                console.debug(`Importing previously unimported plugin ${pluginName}.`);
                 const nodeTypes = await getNodeTypesForPluginVersion(pluginName);
                 for (const nodeType of nodeTypes) {
                     if (nodeType.type.startsWith('cloudify.nodes.')) {
@@ -383,6 +385,7 @@ export class CloudifyWords extends words {
         const itemStr = item.toString(); // Change this to use some lower level object than string.
         
         if (this.ctx.processingSection === toscaDefinitionsVersionName) {
+            //eslint-disable-next-line
             // @ts-ignore
             const toscaDSL = item.value.value as string; 
             if (this.areRawYAMLSectionsEquivalent(itemStr, toscaDefinitionsVersionName)) {
@@ -419,20 +422,22 @@ export class CloudifyWords extends words {
         return true;
     }
 
+    //eslint-disable-next-line
     private unAssignDocumentation(item:any):boolean {
-        if ((item.key.value === 'description') && (item.value.value.length > 1)) {
+        if ((item.key.value === 'description') && (item.value.value != null) && (item.value.value.length > 1)) {
             if ((item.value.type === 'BLOCK_FOLDED') && (this.ctx.cursor.indentation < 1)) {
                 return true;
             } else if ((item.value.type === 'BLOCK_LITERAL') && (this.ctx.cursor.indentation < 1)) {
                 return true;
-            }
+            } else if ((item.value.type === 'PLAIN') && (this.ctx.cursor.line.length < 1)) {
+                return true;
+            } 
         }
         return false;
     }
 
+    //eslint-disable-next-line
     private assignSections(nextItem:any, item:any) {
-        console.log(`The item is: `)
-        console.log(item);
         if ((item.value != null) && (item.key != null)) {
             if (this.unAssignDocumentation(item)) {
                 this.ctx.section = '';  
@@ -457,13 +462,15 @@ export class CloudifyWords extends words {
             this.ctx.yamlPath = '';
         }
     }
-    
+
+    //eslint-disable-next-line
     public recurseParsedDocument(nextItem:any, item:any, parentItem:any) {
         if (item === undefined) {
             return false;
         }
-        let charInside:boolean = false;
+        let charInside = false;
         if (isPair(item)) {
+            //eslint-disable-next-line
             // @ts-ignore
             const itemKeyRange = item.key.range;
             const itemLineNumber = this.ctx.cursor.getLineNumberFromCurrentCharacter(itemKeyRange[0] + 1);
@@ -478,9 +485,11 @@ export class CloudifyWords extends words {
             const charInsideValue = this.recurseParsedDocument(nextItem, item.value, item);
             if (charInsideValue) {
                 charInside = true;
+                //eslint-disable-next-line
                 // @ts-ignore
                 this.ctx.yamlPath = item.key.value + '.' + this.ctx.yamlPath;
             } else if (nextItem == null) {
+                //eslint-disable-next-line
                 // @ts-ignore
                 this.ctx.yamlPath = item.key.value + '.' + this.ctx.yamlPath;
             }
@@ -504,7 +513,7 @@ export class CloudifyWords extends words {
                 if (pairIsInstrinsicFunction(mapItem)) {
                     console.log(`?The item ${item} is an intrinsic function.`);
                 } else {
-                    if (!(this.registerNestedInput(mapItem, parentItem))) {
+                    if ((!(this.registerNestedNodeTemplate(mapItem, parentItem))) || (!(this.registerNestedInput(mapItem, parentItem)))) {
                         insideMap = this.recurseParsedDocument(nextItem, mapItem, item);
                         if (insideMap == true) {
                             charInside = true;
@@ -516,25 +525,23 @@ export class CloudifyWords extends words {
         return charInside;
     }
 
+    //eslint-disable-next-line
     private registerNestedInput(nextItem:any, parentItem:any):boolean {
         let contains = true;
         try {
-            if (parentItem.key.value === 'inputs') {
+            if (parentItem.key.value === inputsName) {
                 if ((isPair(nextItem)) && (isScalar(nextItem.key))) {
                     const char = this.ctx.cursor.currentCharacter;
+                    //eslint-disable-next-line
                     // @ts-ignore
                     const nextItemKeyValue:string = nextItem.key.value;
+                    //eslint-disable-next-line
                     // @ts-ignore
                     const nextItemValueRange:Array = nextItem.value.range;
-                    // @ts-ignore
-                    const nextValueItems:Array = nextItem.value.items;
+                    //eslint-disable-next-line
                     // @ts-ignore
                     const nextItemValueJSON = nextItem.value.toJSON();
                     if ((isYAMLMap(nextItem.value)) || (isScalar(nextItem.value))) {
-                        console.log('6');
-                        console.log(nextItemKeyValue);
-                        console.log(char);
-                        console.log(nextItemValueRange);
                         if ((nextItemValueRange[0] < char) && (char <= nextItemValueRange[2] + 4)) {
                             this.currentKeywords = [];
                             if (this.ctx.cursor.line.match(/^(\s){2,4}(type:){1}/)) {
@@ -544,6 +551,7 @@ export class CloudifyWords extends words {
                             } else if (this.ctx.cursor.line.match(/^(\s){2,4}(display_label:){1}/)) {
                                 this.appendCurrentKeyword(makeCamelCase(nextItemKeyValue));
                             } else if (this.ctx.cursor.line.match(/^(\s){2,4}(default:){1}/)) {
+                                //eslint-disable-next-line
                                 if (isYAMLMap(nextItem.value) && (nextItemValueJSON.hasOwnProperty('type'))) {
                                     if (nextItemValueJSON['type'] === 'boolean') {
                                         this.appendCurrentKeywords(['true', 'false']);
@@ -551,10 +559,10 @@ export class CloudifyWords extends words {
                                 }
                             }
                         } else if ((nextItemValueRange[1] + 8 >= char) && (this.ctx.cursor.isLineIndentedLevel(2))) {
-                            console.log(`7`);
-                            for (let name of inputKeywords) {
+                            for (const name of inputKeywords) {
                                 if (isYAMLMap(nextItem.value)) {
                                     const nextItemValueJSON = nextItem.value.toJSON();
+                                    //eslint-disable-next-line
                                     if (nextItemValueJSON.hasOwnProperty(name)) {
                                         continue;
                                     }
@@ -571,19 +579,118 @@ export class CloudifyWords extends words {
         return contains;
     }
 
+    //eslint-disable-next-line
+    private registerNodeTypeProperties(nextItem:any) {
+        let nodeTypeName = '';
+        console.log(`Inside registerNodeTypeProperties: ${nodeTypeName}`);
+        try {
+            for (const item of nextItem.value.items) {
+                if (isPair(item)) {
+                    //eslint-disable-next-line
+                    // @ts-ignore
+                    if ((item.key.value === 'type') && (item.value.value != null)) {
+                        //eslint-disable-next-line
+                        // @ts-ignore
+                        nodeTypeName = item.value.value;
+                        break;
+                    }
+                }
+            }
+        } catch {
+            // pass
+        }
+        if (nodeTypeName === '') {
+            return;
+        }
+        console.log(`Registering: ${nodeTypeName}`);
+        for (const nodeTypeObject of this.importedNodeTypeObjects) {
+            console.log(`Candidate: ${nodeTypeObject.type}`);
+            if (nodeTypeObject.type === nodeTypeName) {
+                let newSection;
+                const suggested = nodeTemplates.get(nodeTypeName);
+                if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].includes('properties')) {
+                    newSection = new Map();
+                } else {
+                    if (suggested != undefined) {
+                        newSection = {'properties': suggested};
+                        this.appendCurrentKeyword(stringify({'properties': suggested}));
+                        return;
+                    }
+                    newSection = {'properties': new Map()};
+                }
+                const properties = getPropertiesAsString(nodeTypeObject.properties, newSection);
+                this.appendCurrentKeyword(properties);
+            }
+        }
+    }
+
+    //eslint-disable-next-line
+    private registerNestedNodeTemplate(nextItem:any, parentItem:any):boolean {
+        let contains = true;
+        try {
+            if (parentItem.key.value === nodeTemplateName) {
+                if ((isPair(nextItem)) && (isScalar(nextItem.key))) {
+                    const char = this.ctx.cursor.currentCharacter;
+                    //eslint-disable-next-line
+                    // @ts-ignore
+                    const nextItemValueRange:Array = nextItem.value.range;
+                    if ((isYAMLMap(nextItem.value)) || (isScalar(nextItem.value))) {
+                        console.log(nextItemValueRange);
+                        console.log(char);
+                        if ((nextItemValueRange[0] < char) && (char <= nextItemValueRange[2] + 4)) {
+                            this.currentKeywords = [];
+                            if (this.ctx.cursor.line.match(/^(\s){2,4}(type:){1}/)) {
+                                this.appendCurrentKeywords(nodeTypeKeywords);
+                                this.appendCurrentKeywords(this.importedNodeTypeNames);
+                            } else if (this.ctx.cursor.line.match(/^(\s){2,4}(relationships:){1}/)) {
+                                // TODO: Add Relationships Stuff
+                            }
+                        } else if (nextItemValueRange[1] + 8 >= char) {
+                            if (this.ctx.cursor.isLineIndentedLevel(2)) {
+                                for (const name of nodeTemplateKeywords) {
+                                    if (isYAMLMap(nextItem.value)) {
+                                        const nextItemValueJSON = nextItem.value.toJSON();
+                                        //eslint-disable-next-line
+                                        if (nextItemValueJSON.hasOwnProperty(name)) {
+                                            if (this.ctx.cursor.lines[this.ctx.cursor.lineNumber - 2].includes(name)) {
+                                                this.appendCurrentKeyword(' '.repeat(this.ctx.cursor.fileIndentation));
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                    this.appendCurrentKeyword(`${name}:`);
+                                }   
+                            } else if (this.ctx.cursor.isLineIndentedLevel(1)) {
+                                this.appendCurrentKeyword(' '.repeat(this.ctx.cursor.fileIndentation));
+                            }
+                        } else if (nextItemValueRange[1] + 9 >= char) {
+                            if (this.ctx.cursor.isLineIndentedLevel(3)) {
+                                this.registerNodeTypeProperties(nextItem);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            contains = false;
+        }
+        return contains;
+    }
+
+
     public investigateYaml(file:string) {
         console.log('>Starting Investigating YAML.\n');
         let doc;
         try {
             doc = parseDocument(file);
         } catch (error) {
-            console.log(`Unable to parse ${file}. Error: ${error}`);
+            console.error(`Unable to parse ${file}. Error: ${error}`);
         }
         this.ctx.cursor.lines = file.split('\n');
         if (doc !== undefined) {
             if ((doc.contents != null) && (doc.contents instanceof YAMLMap)) {
-                let previousItem:any;
-                let parentItem:any;
+                let previousItem:any; //eslint-disable-line
+                let parentItem:any; //eslint-disable-line
                 for (const nextItem of doc.contents.items) {
                     try {
                         this.recurseParsedDocument(nextItem, previousItem, parentItem);
@@ -598,7 +705,6 @@ export class CloudifyWords extends words {
                 this.registerTopLevelJson(doc.contents.toJSON());
             }
         }
-        // this.registerTopLevelCursor();
         this.registerToscaVersions();
         this.registerDescription();
         this.registerImports();
@@ -612,6 +718,7 @@ export class CloudifyWords extends words {
             this.currentKeywords = [];
             const elements = this.ctx.cursor.lines.map(line => line.split(' ')[0]);
             for (let name of cloudifyTopLevelNames) {
+                //eslint-disable-next-line
                 if (!(elements.hasOwnProperty(name))) {
                     if (['description', toscaDefinitionsVersionName].includes(name)) {
                         name = `${name}: `;
@@ -626,10 +733,12 @@ export class CloudifyWords extends words {
         }
     }
 
+    //eslint-disable-next-line
     public registerTopLevelJson(json:any) {
         if (this.ctx.cursor.character < 1) {
             this.currentKeywords = [];
             for (let name of cloudifyTopLevelNames) {
+                //eslint-disable-next-line
                 if (!(json.hasOwnProperty(name))) {
                     if (['description', toscaDefinitionsVersionName].includes(name)) {
                         name = `${name}: `;
@@ -662,43 +771,6 @@ export class CloudifyWords extends words {
 
     private contextualizedKeywordsFromLines() {
 
-        if (this.ctx.section === 'description') {
-            this.appendCurrentKeyword('This blueprint does xyz...');
-        } else if (this.ctx.section === importsName) {
-            console.log(`<<<<<<<<<<<<<IMPORTS`);
-            // pass
-            // this.registerImports();
-        } else if (this.ctx.section === inputsName) {
-            console.log(`<<<<<<<<<<<<<INPUTS`);
-            // this.registerInputs();
-        } else if (this.ctx.section === nodeTemplateName) {
-            console.log(`<<<<<<<<<<<<<NODE TEMPLATES`);
-            // if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
-            //     this.appendCurrentKeywords(nodeTypeKeywords);
-            //     this.appendCurrentKeywords(this.importedNodeTypeNames);
-            // } else {
-            //     if (getParentSection(this.ctx.cursor) !== '') {
-            //         this.appendCurrentKeywords(nodeTemplateKeywords);
-            //         const nodeTypeName = getNodeType(this.ctx.cursor);
-            //         // Get the suggested properties for node type.
-            //         for (const nodeTypeObject of this.importedNodeTypeObjects) {
-            //             if (nodeTypeObject.type === nodeTypeName) {
-            //                 const suggested = nodeTemplates.get(nodeTypeName);
-            //                 if (suggested !== undefined) {
-            //                     this.appendCurrentKeyword(stringify({'properties': suggested}));
-            //                 } else {
-            //                     const properties = getPropertiesAsString(nodeTypeObject.properties);
-            //                     this.appendCurrentKeyword(properties);
-            //                 }
-            //             }
-            //         }
-            //     } else {
-            //         this.appendCurrentKeywords(nodeTemplateKeywords);
-            //     }
-            // }
-
-        }
-
         if (this.isIntrinsicFunction()) {
             if (lineContainsFn(this.ctx.cursor.line)) {
                 if (lineContainsGetInput(this.ctx.cursor.line)) {
@@ -715,8 +787,5 @@ export class CloudifyWords extends words {
             }
             this.appendCurrentKeywords(intrinsicFunctionKeywords);
         }
-
-
     }
-
 }

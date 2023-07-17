@@ -81,20 +81,23 @@ function cleanUpNodeTypeProperty(prop:nodeTypeProperty) {
     return [prop, typeValue, defaultValue, requiredValue, descriptionValue];
 }
 
-export function getPropertiesAsString(properties:Record<string, nodeTypeProperty>) {
-    const asDict = {'properties': new Map()};
+//eslint-disable-next-line
+export function getPropertiesAsString(properties:Record<string, nodeTypeProperty>, asDict:any) {
     for (const key in properties) {
         const [
             cleanedValue,
+            //eslint-disable-next-line
             _,
             defaultValue,
+            //eslint-disable-next-line
             __,
+            //eslint-disable-next-line
             ___] = cleanUpNodeTypeProperty(properties[key]);
 
         if (defaultValue !== undefined) {
-            asDict['properties'].set(key, defaultValue);
+            asDict.set(key, defaultValue);
         } else {
-            asDict['properties'].set(key, cleanedValue);
+            asDict.set(key, cleanedValue);
         }
     }
 
