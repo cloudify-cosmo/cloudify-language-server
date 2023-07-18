@@ -9,9 +9,9 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {cfyLint} from './cfy-lint';
-import {words} from './word-completion';
 import {readFile, documentCursor} from './parsing';
+import { cfyLint, maxCfyLint } from './cfy-lint';
+import { words } from './word-completion';
 import {
     isPair,
     isScalar,
@@ -203,7 +203,8 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        if (this.cfyLintTimer.isReady()) {
+        
+        if (this.cfyLintTimer.isReady() && maxCfyLint()) {
             this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
             this.diagnostics = [];
         }
