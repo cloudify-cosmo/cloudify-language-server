@@ -84,15 +84,19 @@ export class CloudifyYAML {
     public get yamlPath() {
         return this._path;
     }
+
     public set yamlPath(value) {
         this._path = value;
     }
+
     public get processingSection() {
         return this._processingSection;
     }
+
     public set processingSection(value) {
         this._processingSection = value;
     }
+
     public get sectionStart() {
         return this._sectionStart;
     }
@@ -150,12 +154,6 @@ export class CloudifyYAML {
         return {};
     };
 
-    // getNodeTemplates=()=>{
-    //     const rawNodeTemplates = this.getSection('node_templates');
-    //     const _nodeTemplates = new newNodeTemplateValidator(rawNodeTemplates);
-    //     return _nodeTemplates;
-    // };
-
     getDataTypes=()=>{
         return [];
     };
@@ -169,29 +167,10 @@ export class CloudifyYAML {
     public get section() {
         return this._section;
     }
+
     public set section(value) {
         this._section = value;
     }
-
-    // public get section() {
-    //     // We want to reverse from our current line number.
-    //     for (let i = this.cursor.lineNumber - 1; i >= 0; i--) {
-    //         const line = this.cursor.lines[i];
-    //         // If the line isn't 0 indentation or contain any strings,
-    //         // then it's not the start of a new section.
-    //         if ((line === undefined) || (line.length == 0) || (getIndentation(line) != 0)) {
-    //             continue;
-    //         }
-    //         // Let's look at the first key.
-    //         const keys:string[] = line.split(':');
-    //         if (cloudifyTopLevelNames.includes(keys[0])) {
-    //             // If it fits, use it.
-    //             this._section = keys[0];
-    //             break;
-    //         }
-    //     }
-    //     return this._section;
-    // }
 
 }
 
@@ -228,7 +207,6 @@ export class BlueprintContext extends CloudifyYAML {
     refresh=()=>{
         this.parsed = getParsed(this.uri);
         this.lines = readLines(this.uri);
-        // this.dslVersion = this.getDslVersion();
         this.imports = this.getImports();
         this.nodeTypes = this.getNodeTypes();
         this.inputs = this.assignInputs();

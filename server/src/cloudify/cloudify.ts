@@ -31,15 +31,6 @@ import {
     regex as pluginNameRegex
 } from './sections/plugins';
 import {
-    lineContainsFn,
-    lineMayContainFn,
-    wordsMayIndicateFn,
-    lineContainsGetInput,
-    lineContainsConcatFn,
-    lineContainsGetNodeTemplate,
-    keywords as intrinsicFunctionKeywords,
-} from './sections/intrinsic-functions';
-import {
     CloudifyYAML,
     BlueprintContext,
     cloudifyTopLevelNames
@@ -150,22 +141,6 @@ export class CloudifyWords extends words {
         if (this.ctx.section !== inputsName) {
             return;
         }
-        // const splitYamlPath = this.ctx.yamlPath.split('.');
-        // if ((splitYamlPath.length == 3) && (splitYamlPath[2].match(/^(type|default|required|description|display_label){0,1}$/))) {
-        //     for (let name of inputKeywords) {
-        //         this.appendCurrentKeyword(`${name}:`);
-        //     }
-        // } else if (this.ctx.cursor.line.match(/^(\s){2,4}/)) {
-        //     if (this.ctx.cursor.line.match(/^(\s){2,4}(type:){1}/)) {
-        //         this.appendCurrentKeywords(inputTypes);
-        //     } else if (this.ctx.cursor.line.match(/^(\s){2,4}(type:){1}/)) {
-        //         this.appendCurrentKeyword(makeCamelCase(splitYamlPath[1]));
-        //     } else if (this.ctx.cursor.indentation - this.ctx.cursor.fileIndentation == 2) {
-        //         this.appendCurrentKeyword(inputTemplate);
-        //     } else if (this.ctx.cursor.indentation - this.ctx.cursor.fileIndentation == 0) {
-        //         this.appendCurrentKeyword(`  ${inputTemplate}`);
-        //     }
-        // }
     }
 
     private registerDescription() {
@@ -195,49 +170,6 @@ export class CloudifyWords extends words {
         }
         this.appendPluginCompletionItems(unimportedPlugins, this._currentKeywords);
     }
-
-    // private registerNodeTemplates() {
-    //     if (this.ctx.section !== nodeTemplateName) {
-    //         return;
-    //     }
-    //     const indentation = this.ctx.cursor.indentation - 1;
-    //     let fileIndentation = this.ctx.cursor.fileIndentation;
-    //     if (fileIndentation == null) {
-    //         fileIndentation = indentation;
-    //     }
-    //     if (fileIndentation === indentation) {
-    //         const neededIndent = ' '.repeat(fileIndentation);
-    //         this.appendCurrentKeyword(neededIndent);
-    //     } else if (this.ctx.cursor.line.match(/^(\s){0,4}(type:){1}/)) {
-    //         this.appendCurrentKeywords(nodeTypeKeywords);
-    //         this.appendCurrentKeywords(this.importedNodeTypeNames);
-    //     } else if (this.ctx.cursor.line.match(/^(\s){0,4}$/)) {
-    //         for (let name of nodeTemplateKeywords) {
-    //             if (!(name.endsWith(':'))) {
-    //                 name = `${name}:`;
-    //             }
-    //             this.appendCurrentKeyword(name);
-    //         }
-    //     } else {
-    //         if (getParentSection(this.ctx.cursor) !== '') {
-    //             this.appendCurrentKeywords(nodeTemplateKeywords);
-    //             const nodeTypeName = getNodeType(this.ctx.cursor);
-    //             // Get the suggested properties for node type.
-    //             for (const nodeTypeObject of this.importedNodeTypeObjects) {
-    //                 if (nodeTypeObject.type === nodeTypeName) {
-    //                     const suggested = nodeTemplates.get(nodeTypeName);
-    //                     if (suggested !== undefined) {
-    //                         this.appendCurrentKeyword(stringify({'properties': suggested}));
-    //                     } else {
-    //                         const properties = getPropertiesAsString(nodeTypeObject.properties,);
-    //                         this.appendCurrentKeyword(properties);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    // }
 
     private registerSpaces() {
         if (this.ctx.cursor.line.match(/(:){1}(\s){1,}$/)) {
@@ -677,7 +609,6 @@ export class CloudifyWords extends words {
         return contains;
     }
 
-
     public investigateYaml(file:string) {
         console.log('>Starting Investigating YAML.\n');
         let doc;
@@ -753,39 +684,4 @@ export class CloudifyWords extends words {
         }
     }
 
-    public contextualizedKeywords() {
-        this.contextualizedKeywordsFromLines();
-    }
-
-    isIntrinsicFunction=():boolean=>{
-        if (lineMayContainFn(this.ctx.cursor.line)) {
-            return true;
-        } else if (wordsMayIndicateFn(this.ctx.cursor.words))  {
-            return true;
-        }
-        return false;
-    };
-    isConcatIntrinsicFunction=():boolean=>{
-        return lineContainsConcatFn(this.ctx.cursor.line);
-    };
-
-    private contextualizedKeywordsFromLines() {
-
-        if (this.isIntrinsicFunction()) {
-            if (lineContainsFn(this.ctx.cursor.line)) {
-                if (lineContainsGetInput(this.ctx.cursor.line)) {
-                    for (const inputName of Object.keys(this.inputs)) {
-                        this.appendCurrentKeyword(inputName);
-                    }
-                }
-                if (lineContainsGetNodeTemplate(this.ctx.cursor.line)) {
-                    for (const nodeTemplateName of Object.keys(this.nodeTemplates)) {
-                        const argument = `[ ${nodeTemplateName}, INSERT_PROPERTY_NAME ]`;
-                        this.appendCurrentKeyword(argument);
-                    }
-                }
-            }
-            this.appendCurrentKeywords(intrinsicFunctionKeywords);
-        }
-    }
 }
