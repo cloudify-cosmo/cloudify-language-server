@@ -515,7 +515,6 @@ export class CloudifyWords extends words {
     //eslint-disable-next-line
     private registerNodeTypeProperties(nextItem:any) {
         let nodeTypeName = '';
-        console.log(`Inside registerNodeTypeProperties: ${nodeTypeName}`);
         try {
             for (const item of nextItem.value.items) {
                 if (isPair(item)) {
@@ -535,9 +534,8 @@ export class CloudifyWords extends words {
         if (nodeTypeName === '') {
             return;
         }
-        console.log(`Registering: ${nodeTypeName}`);
         for (const nodeTypeObject of this.importedNodeTypeObjects) {
-            console.log(`Candidate: ${nodeTypeObject.type}`);
+            console.debug(`Registering node type: ${nodeTypeObject.type}`);
             if (nodeTypeObject.type === nodeTypeName) {
                 let newSection;
                 const suggested = nodeTemplates.get(nodeTypeName);
@@ -568,8 +566,6 @@ export class CloudifyWords extends words {
                     // @ts-ignore
                     const nextItemValueRange:Array = nextItem.value.range;
                     if ((isYAMLMap(nextItem.value)) || (isScalar(nextItem.value))) {
-                        console.log(nextItemValueRange);
-                        console.log(char);
                         if ((nextItemValueRange[0] < char) && (char <= nextItemValueRange[2] + 4)) {
                             this.currentKeywords = [];
                             if (this.ctx.cursor.line.match(/^(\s){2,4}(type:){1}/)) {
@@ -611,7 +607,6 @@ export class CloudifyWords extends words {
     }
 
     public investigateYaml(file:string) {
-        console.log('>Starting Investigating YAML.\n');
         let doc;
         try {
             doc = parseDocument(file);
@@ -642,7 +637,6 @@ export class CloudifyWords extends words {
         this.registerImports();
         this.registerInputs();
         this.registerSpaces();
-        console.log('>Ending Investigating YAML.\n');
     }
 
     public registerTopLevelCursor() {
