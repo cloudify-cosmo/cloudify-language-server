@@ -10,8 +10,8 @@ import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
 import {readFile, documentCursor} from './parsing';
-import {cfyLint} from './cfy-lint';
-import {words} from './word-completion';
+import { cfyLint, maxCfyLint } from './cfy-lint';
+import { words } from './word-completion';
 import {
     isPair,
     isScalar,
@@ -55,8 +55,6 @@ import {
     keywords as nodeTemplateKeywords,
 } from './sections/node-templates';
 
-const MAX_CFY_LINT_PROCESSES = 3;
-let ConcurrentProcesses = 0;
 
 export class CloudifyWords extends words {
 
@@ -206,13 +204,9 @@ export class CloudifyWords extends words {
             }
         }
         
-        if (this.cfyLintTimer.isReady()) {
-            if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
-                ConcurrentProcesses += 1;
-                this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
-                this.diagnostics = [];
-                ConcurrentProcesses -= 1;
-            }
+        if (this.cfyLintTimer.isReady() && maxCfyLint()) {
+            this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+            this.diagnostics = [];
         }
 
         await this.privateRefresh();
