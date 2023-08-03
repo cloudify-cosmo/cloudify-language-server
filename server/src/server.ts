@@ -344,31 +344,11 @@ function getTokenBuilder(document: TextDocument): SemanticTokensBuilder {
     return result;
 }
 
-function buildTokens(builder: SemanticTokensBuilder, document: TextDocument) {
-    const text = document.getText();
-    const regexp = /cloudify\.nodes\.(\w+\.?)*|\w+(_\w+)?/g;
-    let match: RegExpExecArray|null;
-    let tokenCounter = 0;
-    let modifierCounter = 0;
-    let lastWord = '';
-    while ((match = regexp.exec(text)) !== null) {
-        const word = match[0];
-        const position = document.positionAt(match.index);
-        let tokenType = tokenCounter % TokenTypes._;
-        const tokenModifier = 1 << modifierCounter % TokenModifiers._;
-        if (word in intrinsicFunctions) {
-            tokenType = 16;
-        } else if (word in sections) {
-            tokenType = 1;
-        } else if (lastWord === 'type') {
-            tokenType = 5;
-        } else if (word in ['type', 'default', 'description', 'display_label', 'required', 'constraints']) {
-            tokenType = 1;
-        }
-        builder.push(position.line, position.character, word.length, tokenType, tokenModifier);
-        tokenCounter++;
-        modifierCounter++;
-        lastWord = word;
+function buildTokens(builder: SemanticTokensBuilder) {
+    for (const item of cloudify.semanticTokens) {
+        builder.push(
+            item.line, item.character, item.length, item.tokenType, item.tokenModifier
+        );
     }
 }
 
@@ -378,7 +358,7 @@ connection.languages.semanticTokens.on((params) => {
         return { data: [] };
     }
     const builder = getTokenBuilder(document);
-    buildTokens(builder, document);
+    buildTokens(builder);
     return builder.build();
 });
 
@@ -389,7 +369,6 @@ connection.languages.semanticTokens.onDelta((params) => {
     }
     const builder = getTokenBuilder(document);
     builder.previousResult(params.previousResultId);
-    buildTokens(builder, document);
+    buildTokens(builder);
     return builder.buildEdits();
 });
-

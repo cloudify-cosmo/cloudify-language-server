@@ -9,7 +9,7 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {readFile, documentCursor} from './parsing';
+import {readFile, semanticToken, documentCursor} from './parsing';
 import {cfyLint} from './cfy-lint';
 import {words} from './word-completion';
 import {
@@ -67,6 +67,7 @@ export class CloudifyWords extends words {
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
     importedNodeTypeObjects:NodeTypeItem[];
+    semanticTokens:semanticToken[];
     //eslint-disable-next-line
     inputs:Object;
     //eslint-disable-next-line
@@ -84,36 +85,98 @@ export class CloudifyWords extends words {
         this.importedNodeTypeNames = [];
         this.importedNodeTypes = [];
         this.importedNodeTypeObjects = [];
+        this.semanticTokens = [];
         this.inputs = {};
         this.nodeTemplates = {};
         this.diagnostics = [];
         this._currentKeywords = [];
         this._importsReload = false;
     }
-
     public get importsReload() {
         return this._importsReload;
     }
-
     public set importsReload(value:boolean) {
         this._importsReload = value;
     }
-
     public get currentKeywords() {
         return this._currentKeywords;
     }
-
     public set currentKeywords(value:CompletionItem[]) {
         this._currentKeywords = value;
     }
-
     public appendCurrentKeyword(value:string) {
         this.appendCompletionItem(value, this._currentKeywords);
     }
-
     public appendCurrentKeywords(values:string[]) {
         this.appendCompletionItems(values, this._currentKeywords);
     }
+    //eslint-disable-next-line
+    registerTopLevelSemanticToken=(item:any)=>{
+        const line = this.ctx.cursor.getLineNumberFromCurrentCharacter(item.key.range[0] + 1);
+        this.registerSemanticToken(item, line, item.key.value.length, 0, 1, 1);
+        if (item.key.value === importsName) {
+            this.registerImportSemanticToken(item);
+        } else if (item.key.value === inputsName) {
+            this.registerInputSemanticToken(item);
+        } else if (item.key.value === nodeTemplateName) {
+            this.registerInputSemanticToken(item);
+        }
+    };
+    //eslint-disable-next-line
+    registerInputSemanticToken=(item:any)=>{
+        const startPoint = this.ctx.cursor.fileIndentation;
+        if (isYAMLMap(item.value)) {
+            for (const mapItem of item.value.items) {
+                const line = this.ctx.cursor.getLineNumberFromCurrentCharacter(mapItem.key.range[0]);
+                this.registerSemanticToken(
+                    mapItem,
+                    line,
+                    mapItem.key.value.length,
+                    startPoint,
+                    2,
+                    2
+                );
+                if (isYAMLMap(mapItem.value)) {
+                    for (const nestedInputItem of mapItem.value.items) {
+                        const line = this.ctx.cursor.getLineNumberFromCurrentCharacter(nestedInputItem.key.range[0]);
+                        this.registerSemanticToken(
+                            nestedInputItem,
+                            line,
+                            nestedInputItem.key.value.length,
+                            2 * startPoint,
+                            10,
+                            1
+                        );
+                    }
+                }
+            }
+        }
+    };
+    //eslint-disable-next-line
+    registerImportSemanticToken=(item:any)=>{
+        const startPoint = this.ctx.cursor.fileIndentation + 2;
+        for (const seqItem of item.value.items) {
+            const line = this.ctx.cursor.getLineNumberFromCurrentCharacter(seqItem.range[1]);
+            if (seqItem.value.startsWith('plugin:')) {
+                this.registerSemanticToken(seqItem, line, 6, startPoint, 10, 1);
+                const pluginName = seqItem.value.split(':')[1];
+                this.registerSemanticToken(seqItem, line, pluginName.length, startPoint + 7, 12, 1);
+            } else {
+                this.registerSemanticToken(seqItem, line, seqItem.value.length, startPoint, 12, 1);
+            }
+        }
+    };
+    //eslint-disable-next-line
+    registerSemanticToken=(item:any, line:number, length:number, character: number, tokenType:number, tokenModifier:number)=>{
+        this.semanticTokens.push({
+            item: item,
+            line: line,
+            character: character,
+            length: length,
+            tokenType: tokenType,
+            tokenModifier: tokenModifier,
+        });
+    };
 
     private registerImports() {
         if (this.ctx.section !== importsName) {
@@ -414,6 +477,9 @@ export class CloudifyWords extends words {
             const itemKeyRange = item.key.range;
             const itemLineNumber = this.ctx.cursor.getLineNumberFromCurrentCharacter(itemKeyRange[0] + 1);
             if ((this.ctx.cursor.lines[itemLineNumber].split(/^(\s)+/).length == 1) && isTopLevel(item)) {
+                //eslint-disable-next-line
+                // @ts-ignore
+                this.registerTopLevelSemanticToken(item);
                 this.assignRawTopLevel(item);
                 if (isPair(nextItem)) {
                     this.assignSections(nextItem, item);

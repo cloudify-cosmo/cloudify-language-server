@@ -93,6 +93,14 @@ export class documentCursor {
         return total;
     }
 
+    public getCharacter(line:number) {
+        let total = 0;
+        for (let i = 0; i < line; i++) {
+            total += this.lines[i].length;
+        }
+        return total;
+    }
+
     public get finalCharacter() {
         let total = 0;
         for (let i = 0; i < this._lines.length; i++) {
@@ -187,4 +195,14 @@ export class documentCursor {
         }
         return result;
     }
+}
+
+export interface semanticToken {
+    //eslint-disable-next-line
+    item: any;
+    line: number;
+    character: number;
+    length: number;
+    tokenType: number;
+    tokenModifier: number;
 }
