@@ -3,8 +3,6 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { isMatch } from '../utils';
-
 export const name = 'tosca_definitions_version';
 export const keywords = [
     'cloudify_dsl_1_3',
@@ -30,8 +28,4 @@ export class Validator {
         }
         return this.version;
     }
-}
-
-export function isToscaDefinitionsLine(line:string): boolean {
-    return isMatch(line, `^${name}:\\s{0,1}`);
 }

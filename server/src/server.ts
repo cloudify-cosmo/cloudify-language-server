@@ -5,8 +5,8 @@
 
 // When adding new modules, use "npm install @types/libName"
 import {documentation as intrinsicFunctions} from './cloudify/sections/intrinsic-functions';
-import {localNames as sections} from './cloudify/documentation';
-import {cloudify} from './cloudify/cloudify';
+import { localNames as sections } from './cloudify/documentation';
+import { CloudifyWords } from './cloudify/cloudify';
 import {sync as commandExistsSync} from 'command-exists';
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {
@@ -42,6 +42,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+export const cloudify = new CloudifyWords();
 
 
 let semanticTokensLegend: SemanticTokensLegend;
@@ -106,8 +107,7 @@ function computeLegend(capability: SemanticTokensClientCapabilities): SemanticTo
 connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
     if (!commandExistsSync(cfyLintCommandName)) {
-        console.log('The command ' + cfyLintCommandName + ' is not installed in PATH. ' +
-        'Ensure that VSCode Python environment has this command available in PATH.');
+        console.error('The command ' + cfyLintCommandName + ' is not installed in PATH. ' + 'Ensure that VSCode Python environment has this command available in PATH.');
     }
 
     // Does the client support the `workspace/configuration` request?
@@ -123,7 +123,7 @@ connection.onInitialize((params: InitializeParams) => {
         capabilities.textDocument.publishDiagnostics &&
         capabilities.textDocument.publishDiagnostics.relatedInformation
     );
-
+    //eslint-disable-next-line
     semanticTokensLegend = computeLegend(params.capabilities.textDocument!.semanticTokens!);
 
     const result: InitializeResult = {
@@ -162,7 +162,7 @@ connection.onCodeAction((params) => {
                 try {
                     parsed = JSON.parse(diagnostic.source);
                 } catch (e) {
-                    console.log('Failed to parse JSON, verify current file is YAML.');
+                    console.error('Failed to parse JSON, verify current file is YAML.');
                     return [];
                 }
             }
@@ -273,6 +273,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     await cloudify.refresh(textDocument);
+    if (cloudify.importsReload == true) {
+        await cloudify.importPlugins();
+        cloudify.importsReload = false;
+    }
 
     const diagnostics = cloudify.diagnostics;
     let problems = 0;
@@ -293,12 +297,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         }
     }
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-    // connection.languages.semanticTokens.on( () => {
-    //     console.log('Foobar');
-    //     return {
-    //         data: [],
-    //     }
-    // });
+    connection.languages.semanticTokens.on( () => {
+        return {data: []};
+    });
 }
 
 connection.onDidChangeWatchedFiles(_change => {
@@ -309,7 +310,9 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
     (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-        return cloudify.contextualizedKeywords(_textDocumentPosition);
+        cloudify.refreshCursor(_textDocumentPosition);
+        cloudify.privateRefresh();
+        return cloudify.currentKeywords;
     }
 );
 
@@ -341,31 +344,11 @@ function getTokenBuilder(document: TextDocument): SemanticTokensBuilder {
     return result;
 }
 
-function buildTokens(builder: SemanticTokensBuilder, document: TextDocument) {
-    const text = document.getText();
-    const regexp = /cloudify\.nodes\.(\w+\.?)*|\w+(_\w+)?/g;
-    let match: RegExpExecArray|null;
-    let tokenCounter = 0;
-    let modifierCounter = 0;
-    let lastWord = '';
-    while ((match = regexp.exec(text)) !== null) {
-        const word = match[0];
-        const position = document.positionAt(match.index);
-        let tokenType = tokenCounter % TokenTypes._;
-        const tokenModifier = 1 << modifierCounter % TokenModifiers._;
-        if (word in intrinsicFunctions) {
-            tokenType = 16;
-        } else if (word in sections) {
-            tokenType = 1;
-        } else if (lastWord === 'type') {
-            tokenType = 5;
-        } else if (word in ['type', 'default', 'description', 'display_label', 'required', 'constraints']) {
-            tokenType = 1;
-        }
-        builder.push(position.line, position.character, word.length, tokenType, tokenModifier);
-        tokenCounter++;
-        modifierCounter++;
-        lastWord = word;
+function buildTokens(builder: SemanticTokensBuilder) {
+    for (const item of cloudify.semanticTokens) {
+        builder.push(
+            item.line, item.character, item.length, item.tokenType, item.tokenModifier
+        );
     }
 }
 
@@ -375,7 +358,7 @@ connection.languages.semanticTokens.on((params) => {
         return { data: [] };
     }
     const builder = getTokenBuilder(document);
-    buildTokens(builder, document);
+    buildTokens(builder);
     return builder.build();
 });
 
@@ -386,6 +369,6 @@ connection.languages.semanticTokens.onDelta((params) => {
     }
     const builder = getTokenBuilder(document);
     builder.previousResult(params.previousResultId);
-    buildTokens(builder, document);
+    buildTokens(builder);
     return builder.buildEdits();
 });

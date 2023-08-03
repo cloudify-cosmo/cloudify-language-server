@@ -3,22 +3,16 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import {getIndentation, JSONItems} from './utils';
+import {JSONItems} from './utils';
 import {name as labelsName} from './sections/labels';
 import {name as workflowsName} from './sections/workflows';
 import {documentCursor, readLines, getParsed} from './parsing';
 import {name as descriptionName} from './sections/description';
 import {name as relationshipsName} from './sections/relationships';
-import {
-    name as nodeTemplatesName,
-    Validator as newNodeTemplateValidator
-} from './sections/node-templates';
+import {name as nodeTemplatesName} from './sections/node-templates';
 import {name as dslDefnitionName} from './sections/dsl-definitions';
 import {name as blueprintLabelsName} from './sections/blueprint-labels';
-import {
-    name as inputsName,
-    Validator as InputValidator
-} from './sections/inputs';
+import {name as inputsName} from './sections/inputs';
 import {
     name as importsName,
     Validator as ImportsValidator
@@ -31,10 +25,7 @@ import {
     name as capabilitiesName,
     alternateName as outputsName
 } from './sections/capabilities';
-import {
-    name as toscaDefinitionsVersionName,
-    Validator as CloudifyToscaDefinitionsVersionValidator
-} from './sections/tosca-definitions-version';
+import {name as toscaDefinitionsVersionName} from './sections/tosca-definitions-version';
 
 export const cloudifyTopLevelNames = [
     inputsName,
@@ -55,22 +46,71 @@ export const cloudifyTopLevelNames = [
 export class CloudifyYAML {
     parsed:JSONItems<object|string|[]>;  // The raw parsed YAML data (JSON).
     lines:string[]; // The current lines in the blueprint file.
+    rawDslVersion:string; // TODO: Change to a better type for comparison.
+    rawImports:string; // TODO: Change to a better type for comparison.
+    rawInputs:string; // TODO: Change to a better type for comparison.
+    rawNodeTemplates:string; // TODO: Change to a better type for comparison.
     dslVersion:string; // The resolved current DSL version. May not be null.
     imports:ImportsValidator|null; // A list of imports.
-    inputs:InputValidator|null; // A dictionary of inputs.
+    //eslint-disable-next-line
+    inputs:Object; // A dictionary of inputs.
     nodeTypes:NodeTypeValidator|null; // A dictionary of node types.
     private _cursor:documentCursor; // Where we are located in the file.
     private _section:string;  // The current section we are editing, e.g. inputs, imports.
+    private _sectionStart:number;
+    private _sectionEnd:number;
+    private _processingSection:string;
+    private _path:string;
 
     constructor() {
         this.parsed = {};
         this.lines = [];
         this._cursor = new documentCursor(null);
         this._section = '';
-        this.dslVersion = ''; // All others may be null, but this must be a string for other fns that use it.
+        this.rawDslVersion = '';
+        this.rawImports = '{}';
+        this.rawInputs = '{}';
+        this.rawNodeTemplates = '{}';
+        this.dslVersion = '';
         this.imports = null;
-        this.inputs = null;
+        this.inputs = {};
         this.nodeTypes = null;
+        this._sectionStart = 0;
+        this._sectionEnd = 0;
+        this._processingSection = '';
+        this._path = '';
+    }
+
+    public get yamlPath() {
+        return this._path;
+    }
+
+    public set yamlPath(value) {
+        this._path = value;
+    }
+
+    public get processingSection() {
+        return this._processingSection;
+    }
+
+    public set processingSection(value) {
+        this._processingSection = value;
+    }
+
+    public get sectionStart() {
+        return this._sectionStart;
+    }
+
+    public set sectionStart(value) {
+        this._sectionStart = value;
+    }
+
+    public get sectionEnd() {
+        return this._sectionEnd;
+    }
+
+    public set sectionEnd(value) {
+        this._sectionEnd = value;
     }
 
     public get cursor() {
@@ -92,33 +132,26 @@ export class CloudifyYAML {
         }
     };
 
-    getDslVersion=()=>{
-        const rawVersion = this.getSection(toscaDefinitionsVersionName);
-        if (rawVersion == null) {
-            return '';
-        } else if (typeof rawVersion === 'object') {
-            return '';
-        }
-        const _version = new CloudifyToscaDefinitionsVersionValidator(rawVersion);
-        return _version.toString();
-    };
-
     getImports=()=>{
         const rawImports = this.getSection('imports');
         const _imports = new ImportsValidator(this.dslVersion, rawImports);
         return _imports;
     };
 
-    getInputs=()=>{
-        const rawInputs = this.getSection('inputs');
-        const _inputs = new InputValidator(rawInputs);
-        return _inputs;
+    assignInputs=()=>{
+        const obj = JSON.parse(this.rawInputs);
+        if (inputsName in obj) {
+            return obj[inputsName];
+        }
+        return {};
     };
 
-    getNodeTemplates=()=>{
-        const rawNodeTemplates = this.getSection('node_templates');
-        const _nodeTemplates = new newNodeTemplateValidator(rawNodeTemplates);
-        return _nodeTemplates;
+    assignNodeTemplates=()=>{
+        const obj = JSON.parse(this.rawNodeTemplates);
+        if (nodeTemplatesName in obj) {
+            return obj[nodeTemplatesName];
+        }
+        return {};
     };
 
     getDataTypes=()=>{
@@ -132,23 +165,11 @@ export class CloudifyYAML {
     };
 
     public get section() {
-        // We want to reverse from our current line number.
-        for (let i = this.cursor.lineNumber - 1; i >= 0; i--) {
-            const line = this.cursor.lines[i];
-            // If the line isn't 0 indentation or contain any strings,
-            // then it's not the start of a new section.
-            if ((line === undefined) || (line.length == 0) || (getIndentation(line) != 0)) {
-                continue;
-            }
-            // Let's look at the first key.
-            const keys:string[] = line.split(':');
-            if (cloudifyTopLevelNames.includes(keys[0])) {
-                // If it fits, use it.
-                this._section = keys[0];
-                break;
-            }
-        }
         return this._section;
+    }
+
+    public set section(value) {
+        this._section = value;
     }
 
 }
@@ -186,10 +207,9 @@ export class BlueprintContext extends CloudifyYAML {
     refresh=()=>{
         this.parsed = getParsed(this.uri);
         this.lines = readLines(this.uri);
-        this.dslVersion = this.getDslVersion();
         this.imports = this.getImports();
         this.nodeTypes = this.getNodeTypes();
-        this.inputs = this.getInputs();
+        this.inputs = this.assignInputs();
     };
 
 }

@@ -18,6 +18,14 @@ export const inputTypes = [
     'dict',
     'list'
 ];
+export const inputTemplate = `# Input Template
+input_template:
+  type: string
+  display_label: Input Name
+  description: a deployment parameter
+  default: ''
+  required: true
+`;
 
 export const documentation = `Parameters that are injected into a blueprint when a deployment is created. These parameters can be referenced elsewhere in the blueprint with the get_input intrinsic function.
 
@@ -61,31 +69,6 @@ export class InputItem {
             } else if (key == 'required') {
                 this.required = input[key];
             }
-        }
-    };
-}
-
-export interface InputItems<T> {
-    [key: string]: T;
-}
-
-export class Validator {
-    raw;
-    contents:InputItems<InputItem>;
-    constructor(raw:null|object|string) {
-        if (raw == null) {
-            raw = {};
-        } else if (typeof raw === 'string') {
-            raw = {};
-        }
-        this.raw = raw;
-        this.contents = Object();
-        this.assign();
-    }
-    assign=()=>{
-        const inputs = Object(this.raw);
-        for (const key of Object.keys(this.raw)) {
-            this.contents[key] = new InputItem(inputs[key]);
         }
     };
 }

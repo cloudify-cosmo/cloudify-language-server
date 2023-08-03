@@ -42,7 +42,7 @@ export const documentation:StringMap = {
     'concat': concat,
     'merge': merge,
 };
-const names:string[] = ['get_input', 'concat', 'get_property', 'get_attribute', 'get_capability', 'get_environment_capability'];
+export const names:string[] = ['get_input', 'concat', 'get_property', 'get_attribute', 'get_capability', 'get_environment_capability'];
 
 function getKeywords() {
     const _keywords:string[] = [];
