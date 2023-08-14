@@ -157,7 +157,9 @@ export class CloudifyWords extends words {
         const startPoint = this.ctx.cursor.fileIndentation + 2;
         for (const seqItem of item.value.items) {
             const line = this.ctx.cursor.getLineNumberFromCurrentCharacter(seqItem.range[1]);
-            if (seqItem.value.startsWith('plugin:')) {
+            if ((seqItem.value == null) || (seqItem.value === 'undefined') || (seqItem.value.length < 1)) {
+                return;
+            } else if (seqItem.value.startsWith('plugin:')) {
                 this.registerSemanticToken(seqItem, line, 6, startPoint, 10, 1);
                 const pluginName = seqItem.value.split(':')[1];
                 this.registerSemanticToken(seqItem, line, pluginName.length, startPoint + 7, 12, 1);
