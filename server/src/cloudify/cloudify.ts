@@ -345,7 +345,6 @@ export class CloudifyWords extends words {
             latestContent = readFile(this.textDoc.textDocument.uri);
             doRefresh = true;
         }
-
         if ((doRefresh == true) && (latestContent !== '')) {
             this._currentKeywords = [];
             if (this.doc != null && this.investigateYaml(this.doc.uri) && this.cfyLintTimer.isReady()) {
@@ -690,8 +689,6 @@ export class CloudifyWords extends words {
         let doc;
         try {
             doc = parseDocument(file);
-            console.log('******************** investigateYaml  ********************');
-
         } catch (error) {
             console.error(`Unable to parse ${file}. Error: ${error}`);
             successful = false;
