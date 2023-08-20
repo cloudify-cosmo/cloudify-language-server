@@ -347,7 +347,8 @@ export class CloudifyWords extends words {
         }
         if ((doRefresh == true) && (latestContent !== '')) {
             this._currentKeywords = [];
-            if (this.doc != null && this.investigateYaml(this.doc.uri) && this.cfyLintTimer.isReady()) {
+            if (this.doc != null && this.investigateYaml(latestContent) && this.cfyLintTimer.isReady()) {
+                console.log('in if');
                 if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                     ConcurrentProcesses += 1;
                     this.diagnostics = [];
