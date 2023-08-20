@@ -75,6 +75,7 @@ export class CloudifyWords extends words {
     diagnostics:Diagnostic[];
     _currentKeywords:CompletionItem[];
     _importsReload:boolean;
+    doc:TextDocument|null;
 
     constructor() {
         super();
@@ -91,6 +92,7 @@ export class CloudifyWords extends words {
         this.diagnostics = [];
         this._currentKeywords = [];
         this._importsReload = false;
+        this.doc = null;
     }
     public get importsReload() {
         return this._importsReload;
@@ -270,16 +272,7 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        
-        if (this.cfyLintTimer.isReady()) {
-            if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
-                ConcurrentProcesses += 1;
-                this.diagnostics = [];
-                this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
-                ConcurrentProcesses -= 1;
-            }
-        }
-
+        this.doc = textDocument;
         await this.privateRefresh();
     }
 
@@ -352,9 +345,21 @@ export class CloudifyWords extends words {
             latestContent = readFile(this.textDoc.textDocument.uri);
             doRefresh = true;
         }
+
         if ((doRefresh == true) && (latestContent !== '')) {
             this._currentKeywords = [];
-            this.investigateYaml(latestContent);
+            if (this.doc != null && this.investigateYaml(this.doc.uri) && this.cfyLintTimer.isReady()) {
+                if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
+                    ConcurrentProcesses += 1;
+                    this.diagnostics = [];
+                    // TODO: FIgure out if the textDocument vs this.textDoc.
+                    if (this.doc != null) {
+                        this.diagnostics = await cfyLint(this.doc).then((result) => {return result;});
+                        ConcurrentProcesses -= 1;
+                    }   
+                }  
+            }
+
             this.inputs = this.ctx.assignInputs();
             this.nodeTemplates = this.ctx.assignNodeTemplates();
         } else {
@@ -681,11 +686,15 @@ export class CloudifyWords extends words {
     }
 
     public investigateYaml(file:string) {
+        let successful = true;
         let doc;
         try {
             doc = parseDocument(file);
+            console.log('******************** investigateYaml  ********************');
+
         } catch (error) {
             console.error(`Unable to parse ${file}. Error: ${error}`);
+            successful = false;
         }
         this.ctx.cursor.lines = file.split('\n');
         if (doc !== undefined) {
@@ -711,6 +720,7 @@ export class CloudifyWords extends words {
         this.registerImports();
         this.registerInputs();
         this.registerSpaces();
+        return successful;
     }
 
     public registerTopLevelCursor() {
