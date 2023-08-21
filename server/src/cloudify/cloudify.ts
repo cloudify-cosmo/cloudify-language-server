@@ -333,9 +333,9 @@ export class CloudifyWords extends words {
     };
 
     public async privateRefresh() {
-    
         let doRefresh = false;
         let latestContent = '';
+        let isValidYaml = false;
         if ((this.ctx.cursor.raw == null) && (this.textDoc == null)) {
             // console.warn('Unable to execute refresh, because we do not have raw text document.');
         } else if (this.ctx.cursor.raw != null) {
@@ -345,10 +345,15 @@ export class CloudifyWords extends words {
             latestContent = readFile(this.textDoc.textDocument.uri);
             doRefresh = true;
         }
+        if (process.pid) {
+            console.log('This process is your pid1 ' + process.pid + ' ' + process.ppid);
+        }
         if ((doRefresh == true) && (latestContent !== '')) {
             this._currentKeywords = [];
-            if (this.doc != null && this.investigateYaml(latestContent) && this.cfyLintTimer.isReady()) {
-                console.log('in if');
+            isValidYaml = this.investigateYaml(latestContent);
+            console.log('** isValidYaml: ', isValidYaml);
+            if (this.doc != null && isValidYaml && this.cfyLintTimer.isReady()) {
+                console.log('This process is your pid2 ' + process.pid + ' ' + process.ppid);
                 if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                     ConcurrentProcesses += 1;
                     this.diagnostics = [];
