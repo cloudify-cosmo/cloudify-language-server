@@ -9,7 +9,7 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {readFile, semanticToken, documentCursor} from './parsing';
+import {readFile, semanticToken, documentCursor, getParsed} from './parsing';
 import {cfyLint} from './cfy-lint';
 import {words} from './word-completion';
 import {
@@ -271,15 +271,22 @@ export class CloudifyWords extends words {
             }
         }
         
-        if (this.cfyLintTimer.isReady()) {
-            if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
-                ConcurrentProcesses += 1;
-                this.diagnostics = [];
-                this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
-                ConcurrentProcesses -= 1;
+        const parsed = getParsed(textDocument.uri);
+        console.log('**parsed: ',parsed);
+        if (parsed && Object.values(parsed).length > 0){
+            if (this.cfyLintTimer.isReady()) {
+                if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
+                    ConcurrentProcesses += 1;
+                    this.diagnostics = [];
+                    console.log('** cfyLint');
+                    this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+                    ConcurrentProcesses -= 1;
+                }
             }
         }
-
+        else {
+            console.log('**error !!');
+        }
         await this.privateRefresh();
     }
 

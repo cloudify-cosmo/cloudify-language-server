@@ -33,6 +33,7 @@ import {
     DidChangeConfigurationNotification,
 } from 'vscode-languageserver/node';
 
+
 // Create a simple text document manager.
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
@@ -272,6 +273,7 @@ documents.onDidChangeContent(change => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
+
     await cloudify.refresh(textDocument);
     if (cloudify.importsReload == true) {
         await cloudify.importPlugins();
