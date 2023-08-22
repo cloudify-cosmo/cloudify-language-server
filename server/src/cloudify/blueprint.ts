@@ -206,6 +206,9 @@ export class BlueprintContext extends CloudifyYAML {
 
     refresh=()=>{
         this.parsed = getParsed(this.uri);
+        if (!this.parsed || Object.values(this.parsed).length == 0){
+            console.log('*** error!!!');
+        }        
         this.lines = readLines(this.uri);
         this.imports = this.getImports();
         this.nodeTypes = this.getNodeTypes();
