@@ -9,7 +9,7 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {readFile, semanticToken, documentCursor} from './parsing';
+import {readFile, semanticToken, documentCursor, parseTest} from './parsing';
 import {cfyLint} from './cfy-lint';
 import {words} from './word-completion';
 import {
@@ -270,8 +270,7 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        
-        if (this.cfyLintTimer.isReady()) {
+        if (this.cfyLintTimer.isReady() && parseTest.parseSucceeded) {
             if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                 ConcurrentProcesses += 1;
                 this.diagnostics = [];

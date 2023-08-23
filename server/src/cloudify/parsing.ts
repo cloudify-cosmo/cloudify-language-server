@@ -11,14 +11,17 @@ import {
     JSONItems,
     getIndentation,
 } from './utils';
+export const parseTest = { parseSucceeded : true };
 
 export function getParsed(uri:string) {
     let parsed:JSONItems<object|string|[]> = {};
     try {
         const file = readFile(uri);
         parsed = parse(file);
+        parseTest.parseSucceeded = true;
     } catch (error) {
         console.log('There was an error: ' + error);
+        parseTest.parseSucceeded = false;
     }
     return parsed;
 }
