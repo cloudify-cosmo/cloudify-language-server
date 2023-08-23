@@ -57,6 +57,7 @@ import {
 
 const MAX_CFY_LINT_PROCESSES = 3;
 let ConcurrentProcesses = 0;
+export const parseTest = { parseSucceeded : true };
 
 export class CloudifyWords extends words {
 
@@ -75,7 +76,6 @@ export class CloudifyWords extends words {
     diagnostics:Diagnostic[];
     _currentKeywords:CompletionItem[];
     _importsReload:boolean;
-    _parseSucceeded:boolean;
 
     constructor() {
         super();
@@ -92,13 +92,6 @@ export class CloudifyWords extends words {
         this.diagnostics = [];
         this._currentKeywords = [];
         this._importsReload = false;
-        this._parseSucceeded = false;
-    }
-    public get parseSucceeded() {
-        return this._parseSucceeded;
-    }
-    public set parseSucceeded(value:boolean) {
-        this._parseSucceeded = value;
     }
     public get importsReload() {
         return this._importsReload;
@@ -278,7 +271,7 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        if (this.cfyLintTimer.isReady() && this.parseSucceeded) {
+        if (this.cfyLintTimer.isReady() && parseTest.parseSucceeded) {
             if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                 ConcurrentProcesses += 1;
                 this.diagnostics = [];
