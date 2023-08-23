@@ -75,7 +75,7 @@ export class CloudifyWords extends words {
     diagnostics:Diagnostic[];
     _currentKeywords:CompletionItem[];
     _importsReload:boolean;
-    parseSucceeded:boolean;
+    _parseSucceeded:boolean;
 
     constructor() {
         super();
@@ -92,7 +92,13 @@ export class CloudifyWords extends words {
         this.diagnostics = [];
         this._currentKeywords = [];
         this._importsReload = false;
-        this.parseSucceeded = true;
+        this._parseSucceeded = false;
+    }
+    public get parseSucceeded() {
+        return this._parseSucceeded;
+    }
+    public set parseSucceeded(value:boolean) {
+        this._parseSucceeded = value;
     }
     public get importsReload() {
         return this._importsReload;
