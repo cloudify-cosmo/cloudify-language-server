@@ -75,6 +75,7 @@ export class CloudifyWords extends words {
     diagnostics:Diagnostic[];
     _currentKeywords:CompletionItem[];
     _importsReload:boolean;
+    parseSucceeded:boolean;
 
     constructor() {
         super();
@@ -91,6 +92,7 @@ export class CloudifyWords extends words {
         this.diagnostics = [];
         this._currentKeywords = [];
         this._importsReload = false;
+        this.parseSucceeded = true;
     }
     public get importsReload() {
         return this._importsReload;
@@ -270,8 +272,7 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        
-        if (this.cfyLintTimer.isReady()) {
+        if (this.cfyLintTimer.isReady() && this.parseSucceeded) {
             if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                 ConcurrentProcesses += 1;
                 this.diagnostics = [];

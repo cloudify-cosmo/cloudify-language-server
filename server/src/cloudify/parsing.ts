@@ -11,14 +11,17 @@ import {
     JSONItems,
     getIndentation,
 } from './utils';
+import { cloudify } from '../server';
 
 export function getParsed(uri:string) {
     let parsed:JSONItems<object|string|[]> = {};
     try {
         const file = readFile(uri);
         parsed = parse(file);
+        cloudify.parseSucceeded = true;
     } catch (error) {
         console.log('There was an error: ' + error);
+        cloudify.parseSucceeded = false;
     }
     return parsed;
 }
