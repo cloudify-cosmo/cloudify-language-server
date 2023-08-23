@@ -271,22 +271,15 @@ export class CloudifyWords extends words {
             }
         }
         
-        const parsed = getParsed(textDocument.uri);
-        console.log('**parsed: ',parsed);
-        if (parsed && Object.values(parsed).length > 0){
-            if (this.cfyLintTimer.isReady()) {
-                if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
-                    ConcurrentProcesses += 1;
-                    this.diagnostics = [];
-                    console.log('** cfyLint');
-                    this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
-                    ConcurrentProcesses -= 1;
-                }
+        if (this.cfyLintTimer.isReady()) {
+            if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
+                ConcurrentProcesses += 1;
+                this.diagnostics = [];
+                this.diagnostics = await cfyLint(textDocument).then((result) => {return result;});
+                ConcurrentProcesses -= 1;
             }
         }
-        else {
-            console.log('**error !!');
-        }
+
         await this.privateRefresh();
     }
 
@@ -690,6 +683,9 @@ export class CloudifyWords extends words {
     public investigateYaml(file:string) {
         let doc;
         try {
+            console.log('**file: ', file);
+            console.log('**---- eof');
+
             doc = parseDocument(file);
         } catch (error) {
             console.error(`Unable to parse ${file}. Error: ${error}`);

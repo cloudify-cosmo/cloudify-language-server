@@ -98,6 +98,8 @@ function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
 }
 
 export async function cfyLint(textDocument:TextDocument) {
+    console.log('** cfyLint');
+
     const diagnostics:Diagnostic[] = [];
     const blueprintPath = fullPath(textDocument.uri);
     const commandFlags = ['-f', 'json', '-b'];
