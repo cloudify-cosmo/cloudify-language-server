@@ -3,7 +3,7 @@
 	"description": "VSCode part of Cloudify language server",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"publisher": "vscode",
 	"repository": {
 		"type": "git",
