@@ -76,17 +76,17 @@ function generateDiagnostic(parsed:cfyLintMessage, textDocument:TextDocument) {
         textDocument.positionAt(m.index),
         textDocument.positionAt(m.index + m[0].length)
     );
-    if (parsed.rule === 'empty-lines') {
-        if (parsed.line > 0) {
-            range.start.line = parsed.line - 1;
-            range.end.line = parsed.line - 1;
-        } else {
-            range.start.line = parsed.line;
-            range.end.line = parsed.line;
-        }
-        range.start.character = 0;
-        range.end.character = 0;
+
+    if (parsed.line > 0) {
+        range.start.line = parsed.line - 1;
+        range.end.line = parsed.line - 1;
+    } else {
+        range.start.line = parsed.line;
+        range.end.line = parsed.line;
     }
+    range.start.character = 0;
+    range.end.character = 0;
+
     const diagnostic:Diagnostic = Diagnostic.create(
         range,
         parsed.message,
