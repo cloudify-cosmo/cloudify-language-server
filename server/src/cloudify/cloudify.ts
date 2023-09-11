@@ -9,7 +9,7 @@ import {
 import {TextDocument} from 'vscode-languageserver-textdocument';
 import {nodeTemplates} from './constants/default-node-template-properties';
 import {CompletionItem, Diagnostic, TextDocumentPositionParams} from 'vscode-languageserver/node';
-import {readFile, semanticToken, documentCursor} from './parsing';
+import {readFile, semanticToken, documentCursor, parseTest} from './parsing';
 import {cfyLint} from './cfy-lint';
 import {words} from './word-completion';
 import {
@@ -62,7 +62,6 @@ export class CloudifyWords extends words {
 
     ctx:CloudifyYAML;
     textDoc:TextDocumentPositionParams|null;
-    relativeImports:string[];
     importedPlugins:string[];
     importedNodeTypeNames:string[];
     importedNodeTypes:CompletionItem[];
@@ -81,7 +80,6 @@ export class CloudifyWords extends words {
         this.ctx = new CloudifyYAML();
         this.textDoc = null;
         this.importedPlugins = [];
-        this.relativeImports = [];
         this.importedNodeTypeNames = [];
         this.importedNodeTypes = [];
         this.importedNodeTypeObjects = [];
@@ -270,8 +268,7 @@ export class CloudifyWords extends words {
                 this.registerTopLevelCursor();
             }
         }
-        
-        if (this.cfyLintTimer.isReady()) {
+        if (this.cfyLintTimer.isReady() && parseTest.parseSucceeded) {
             if (ConcurrentProcesses < MAX_CFY_LINT_PROCESSES){
                 ConcurrentProcesses += 1;
                 this.diagnostics = [];
@@ -282,12 +279,6 @@ export class CloudifyWords extends words {
 
         await this.privateRefresh();
     }
-
-    addRelativeImports=(documentUri:string, target:CompletionItem[])=>{
-        for (const value of getImportableYamls(documentUri)) {
-            this.appendCompletionItem(value, target);
-        }
-    };
 
     public async importPlugins() {
         if (this.ctx != null) {

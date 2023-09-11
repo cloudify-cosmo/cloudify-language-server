@@ -1,7 +1,7 @@
 {
 	"name": "cloudify-lsp-server",
 	"description": "Cloudify language server.",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
 	"engines": {
